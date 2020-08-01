@@ -3,7 +3,7 @@
     "dataset": "dsprites",
     "device_id": 0,
     "epochs": 12,
-    "experiment_description": "test",
+    "experiment_description": "logging to both console and fille",
     "experiment_name": "test",
     "full_data": true,
     "gan_type": "infoGAN",

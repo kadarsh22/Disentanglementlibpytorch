@@ -1,5 +1,4 @@
 import sys
-import os
 import torch
 from config import save_config
 from config import get_config
@@ -11,6 +10,7 @@ from saver import Saver
 from visualiser import Visualiser
 from logger import PerfomanceLogger
 import logging
+
 
 def main(configuration):
 	perf_logger = PerfomanceLogger()
@@ -53,4 +53,5 @@ def main(configuration):
 
 if __name__ == "__main__":
 	config = get_config(sys.argv[1:])
+	PerfomanceLogger.configure_logger(config)
 	main(config)
