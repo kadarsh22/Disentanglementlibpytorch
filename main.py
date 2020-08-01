@@ -53,5 +53,6 @@ def main(configuration):
 
 if __name__ == "__main__":
 	config = get_config(sys.argv[1:])
+	Trainer.set_seed(config.random_seeds[0])
 	PerfomanceLogger.configure_logger(config)
 	main(config)

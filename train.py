@@ -15,7 +15,6 @@ class Trainer(object):
 		self.data = dsprites
 		self.config = config
 		self.device = torch.device('cuda:' + str(config.device_id))
-		Trainer.set_seed(config.random_seeds[0])
 		self.train_loader = self._get_training_data()
 		self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
 
