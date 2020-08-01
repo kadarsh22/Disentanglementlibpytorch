@@ -13,10 +13,10 @@ import logging
 
 
 def main(configuration):
+	Trainer.set_seed(configuration['random_seed'])
 	perf_logger = PerfomanceLogger()
 	perf_logger.start_monitoring("Saving configurations")
-	for arg in vars(configuration):
-		logging.info(' {} : {}'.format(arg, getattr(configuration, arg)))
+	logging.debug('Configurations: %s', configuration)
 	save_config(configuration)
 	perf_logger.stop_monitoring("Saving configurations")
 	perf_logger.start_monitoring("Fetching data, models and class instantiations")
@@ -28,10 +28,10 @@ def main(configuration):
 	visualise_results = Visualiser(configuration)
 	perf_logger.stop_monitoring("Fetching data, models and class instantiations")
 
-	for i in range(configuration.epochs):
+	for i in range(configuration['epochs']):
 		model.train()
 		model, loss = model_trainer.train_vae(model, optimizer, i)
-		if i % configuration.logging_freq == 0 and i != 0:
+		if i % configuration['logging_freq'] == 0 and i != 0:
 			perf_logger.start_monitoring("Saving Model")
 			saver.save_model((model,), (optimizer,), loss, epoch=i)
 			perf_logger.stop_monitoring("Saving Model")
@@ -53,6 +53,6 @@ def main(configuration):
 
 if __name__ == "__main__":
 	config = get_config(sys.argv[1:])
-	Trainer.set_seed(config.random_seeds)
-	PerfomanceLogger.configure_logger(config)
-	main(config)
+	config_dict = config.__dict__
+	PerfomanceLogger.configure_logger(config_dict)
+	main(config_dict)

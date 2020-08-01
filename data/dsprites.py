@@ -12,6 +12,7 @@ dsprites_path = "/home/adarsh/PycharmProjects/Disentaglement/data/dsprites/dspri
 class DSprites(object):
 	def __init__(self, config):
 		self.config = config
+		self.exp_name = config['experiment_name']
 		self.data_shape = [64, 64, 1]  # Load the data so that we can sample from it.
 		with open(dsprites_path, "rb") as data_file:
 			# Data was saved originally using python2, so we need to set the encoding.
@@ -21,7 +22,7 @@ class DSprites(object):
 		self.latents_sizes = metadata['latents_sizes']
 
 		# if full data load the entire dataset else only load images corresponding to one shape
-		if config.full_data:
+		if config['full_data']:
 			self.images = np.array(data["imgs"])
 			self.latents_values = data['latents_values']
 			self.latents_classes = data['latents_classes']
@@ -36,7 +37,7 @@ class DSprites(object):
 		self.show_images_grid()
 
 	def show_images_grid(self, nrows=10):
-		path = os.getcwd() + f'/results/{self.config.experiment_name}' + '/visualisations/input.jpeg'
+		path = os.getcwd() + f'/results/{self.exp_name}' + '/visualisations/input.jpeg'
 		index = np.random.choice(self.images.shape[0], nrows * nrows, replace=False)
 		batch_tensor = torch.from_numpy(self.images[index])
 		grid_img = torchvision.utils.make_grid(batch_tensor.view(-1, 1, 64, 64), nrow=10, padding=5, pad_value=1)

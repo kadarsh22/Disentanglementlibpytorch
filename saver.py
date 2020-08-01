@@ -5,15 +5,16 @@ import torch
 class Saver(object):
 	def __init__(self, config):
 		self.config = config
+		self.experiment_name = self.config['experiment_name']
 
 	def save_model(self, model, optimizer, loss, epoch=0):
-		cwd = os.getcwd() + f'/results/{self.config.experiment_name}'  # project root
+		cwd = os.getcwd() + f'/results/{self.experiment_name}'  # project root
 		models_dir = cwd + '/models/'
 
 		if not os.path.exists(models_dir):
 			os.makedirs(models_dir)
 
-		if self.config.model_arch == 'vae':
+		if self.config['model_arch'] == 'vae':
 			torch.save({
 				'epoch': epoch,
 				'model_state_dict': model[0].state_dict(),
@@ -21,7 +22,7 @@ class Saver(object):
 				'loss': loss
 			}, os.path.join(models_dir, str(epoch) + '_vae.pkl'))
 			torch.save(model[0].state_dict(), os.path.join(models_dir, '_vae.pkl'))
-		elif self.config.model_arch == 'gan':
+		elif self.config['model_arch'] == 'gan':
 			torch.save({
 				'epoch': epoch,
 				'gen_state_dict': model[0].state_dict(),
@@ -34,7 +35,7 @@ class Saver(object):
 			raise NotImplementedError
 
 	def load_model(self, model, optimizer, epoch):
-		cwd = os.getcwd() + f'/results/{self.config.experiment_name}'  # project root
+		cwd = os.getcwd() + f'/results/{self.experiment_name}'  # project root
 		models_dir = cwd + '/models/'
 
 		if self.config.model_arch == 'vae':
@@ -55,7 +56,7 @@ class Saver(object):
 			raise NotImplementedError
 
 	def save_results(self, results, filename):
-		file_location = os.getcwd() + f'/results/{self.config.experiment_name}' + '/experimental_results/'
+		file_location = os.getcwd() + f'/results/{self.experiment_name}' + '/experimental_results/'
 		if not os.path.exists(file_location):
 			os.makedirs(file_location)
 		path = file_location + str(filename) + '.pkl'
@@ -63,7 +64,7 @@ class Saver(object):
 
 	def load_results(self, filename):
 		# noinspection PyCompatibility
-		file_location = os.getcwd() + f'/results/{self.config.experiment_name}' + '/experimental_results/'
+		file_location = os.getcwd() + f'/results/{self.experiment_name}' + '/experimental_results/'
 		path = file_location + str(filename) + '.pkl'
 		results = torch.load(path)
 		return results

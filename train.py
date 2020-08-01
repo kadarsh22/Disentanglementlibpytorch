@@ -13,7 +13,7 @@ class Trainer(object):
 		super(Trainer, self).__init__()
 		self.data = dsprites
 		self.config = config
-		self.device = torch.device('cuda:' + str(config.device_id))
+		self.device = torch.device('cuda:' + str(config['device_id']))
 		self.train_loader = self._get_training_data()
 		self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
 
@@ -30,7 +30,7 @@ class Trainer(object):
 			kld_loss.append(loss[1].item())
 			total_loss.append(loss[0].item())
 		logging.info("Epochs  %d / %d Time taken %d sec Loss : %.3f BCELoss: %.3f, KLDLoss %.3F" % (
-			epoch, self.config.epochs, time.time() - start_time, sum(total_loss) / len(total_loss),
+			epoch, self.config['epochs'], time.time() - start_time, sum(total_loss) / len(total_loss),
 			sum(bce_loss) / len(bce_loss), sum(kld_loss) / len(kld_loss)))
 		self.train_hist_vae['loss'].append(sum(total_loss) / len(total_loss))
 		self.train_hist_vae['bce_loss'].append(sum(bce_loss) / len(bce_loss))
@@ -39,7 +39,7 @@ class Trainer(object):
 
 	def _get_training_data(self):
 		images = torch.from_numpy(self.data.images)
-		train_loader = torch.utils.data.DataLoader(images, batch_size=self.config.batch_size, shuffle=True)
+		train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
 		return train_loader
 
 	@staticmethod

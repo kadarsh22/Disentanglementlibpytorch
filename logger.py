@@ -21,6 +21,7 @@ class PerfomanceLogger(object):
 
 	@staticmethod
 	def configure_logger(config):
+		experiment_name = config['experiment_name']
 		logger = logging.getLogger()
 		logger.setLevel(logging.INFO)
 		ch = logging.StreamHandler()
@@ -28,7 +29,7 @@ class PerfomanceLogger(object):
 		formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 		ch.setFormatter(formatter)
 		logger.addHandler(ch)
-		directory = os.getcwd() + f'/results/{config.experiment_name}'
+		directory = os.getcwd() + f'/results/{experiment_name}'
 		if not os.path.exists(directory):
 			os.makedirs(directory)
 		fh = logging.FileHandler(directory+'/logfile.txt')

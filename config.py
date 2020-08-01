@@ -32,6 +32,8 @@ parser.add_argument('--latent_dim', type=int, default=10, help='Number of latent
 parser.add_argument('--learning_r', type=float, default=5e-4, help='Number of latent units ')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
+parser.add_argument('--random_seeds', type=list, default=[123,34,23], help='Random seeds to run for ')
+
 
 
 def get_config(inputs):
@@ -40,12 +42,13 @@ def get_config(inputs):
 
 
 def save_config(config):
-	cwd = os.getcwd() + f'/results/{config.experiment_name}'  # project root
+	exp_name = config['experiment_name']
+	cwd = os.getcwd() + f'/results/{exp_name}'  # project root
 	models_dir = cwd + '/models'  # models directory
 	visualisations_dir = cwd + '/visualisations'  # directory in which images and plots are saved
 	os.makedirs(cwd, exist_ok=True)
 	os.makedirs(models_dir, exist_ok=True)
 	os.makedirs(visualisations_dir, exist_ok=True)
 	with open(f'{cwd}/config.json', 'w') as fp:
-		json.dump(config.__dict__, fp, indent=4, sort_keys=True)
+		json.dump(config, fp, indent=4, sort_keys=True)
 	return
