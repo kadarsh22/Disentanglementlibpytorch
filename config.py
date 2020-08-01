@@ -27,7 +27,7 @@ parser.add_argument('--epochs', type=int, default=12, help='The number of epochs
 parser.add_argument('--batch_size', type=int, default=2048, help='The size of batch')
 parser.add_argument('--device_id', type=int, default=0, help='Device id of gpu')
 parser.add_argument('--gan_type', type=str, default='infoGAN', choices=['dcgan', 'infogan'], help='The type of GAN')
-parser.add_argument('--random_seeds', type=list, default=[123, 22, 92, 43, 232], help='Random seeds to run for ')
+parser.add_argument('--random_seed', type=int, default=123, help='Random seeds to run for ')
 parser.add_argument('--latent_dim', type=int, default=10, help='Number of latent units ')
 parser.add_argument('--learning_r', type=float, default=5e-4, help='Number of latent units ')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
