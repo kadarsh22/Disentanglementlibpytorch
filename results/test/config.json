@@ -1,0 +1,22 @@
+{
+    "batch_size": 2048,
+    "dataset": "dsprites",
+    "device_id": 0,
+    "epochs": 12,
+    "experiment_description": "test",
+    "experiment_name": "test",
+    "full_data": true,
+    "gan_type": "infoGAN",
+    "latent_dim": 10,
+    "learning_r": 0.0005,
+    "logging_freq": 5,
+    "model_arch": "vae",
+    "model_name": "beta_vae",
+    "random_seeds": [
+        123,
+        22,
+        92,
+        43,
+        232
+    ]
+}

@@ -1,0 +1,43 @@
+import os
+import torch
+import torchvision
+import matplotlib
+import matplotlib.pyplot as plt
+matplotlib.use("Agg")
+
+
+class Visualiser(object):
+	def __init__(self, config):
+		self.config = config
+
+	def generate_plot_save_results(self, results, plot_type):
+		file_location = os.getcwd() + f'/results/{self.config.experiment_name}' + '/visualisations/plots/'
+		if not os.path.exists(file_location):
+			os.makedirs(file_location)
+		plt.figure()
+		for name, values in results.items():
+			x_axis = list(range(len(values)))
+			plt.plot(x_axis, values, label=name)
+		plt.legend(loc="upper right")
+		path = file_location + str(plot_type) + '.jpeg'
+		plt.savefig(path)
+
+	def visualise_latent_traversal(self, initial_rep, decoder, interval, epoch_num):
+		interpolation = torch.arange(-3, 3 + 0.1, interval)
+		rep_org = initial_rep
+		file_location = os.getcwd() + f'/results/{self.config.experiment_name}' + '/visualisations/latent_traversal/'
+		if not os.path.exists(file_location):
+			os.makedirs(file_location)
+		path = file_location + str(epoch_num) + '.jpeg'
+		samples = []
+		for j in range(self.config.latent_dim):
+			temp = initial_rep.data[:, j].clone()
+			for k in interpolation:
+				rep_org.data[:, j] = k
+				sample = torch.sigmoid(decoder(rep_org))  # TODO need not be sigmoid
+				sample = sample.view(-1, 64, 64)
+				samples.append(sample)
+			rep_org.data[:, j] = temp
+		grid_img = torchvision.utils.make_grid(samples, nrow=10, padding=10, pad_value=1)
+		grid = grid_img.permute(1, 2, 0).type(torch.FloatTensor)
+		plt.imsave(path, grid.data.numpy())
