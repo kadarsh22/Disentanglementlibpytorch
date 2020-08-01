@@ -11,7 +11,6 @@ class Trainer(object):
 
 	def __init__(self, dsprites, config):
 		super(Trainer, self).__init__()
-		self.train_hist = {'loss': [], 'bce_loss': [], 'kld_loss': []}
 		self.data = dsprites
 		self.config = config
 		self.device = torch.device('cuda:' + str(config.device_id))
@@ -36,7 +35,7 @@ class Trainer(object):
 		self.train_hist_vae['loss'].append(sum(total_loss) / len(total_loss))
 		self.train_hist_vae['bce_loss'].append(sum(bce_loss) / len(bce_loss))
 		self.train_hist_vae['kld_loss'].append(sum(kld_loss) / len(kld_loss))
-		return model, self.train_hist
+		return model, self.train_hist_vae
 
 	def _get_training_data(self):
 		images = torch.from_numpy(self.data.images)
