@@ -33,7 +33,9 @@ parser.add_argument('--learning_r', type=float, default=5e-4, help='Number of la
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=True, help='wether to run in ablation study mode or not')
-parser.add_argument('--random_seeds', type=list, default=[123,34,134], help='Random seeds to run for ')
+# parser.add_argument('--random_seeds', type=list, default=[123,34,134], help='Random seeds to run for ')
+parser.add_argument('--latent_dims', type=list, default=[5,10], help='Number of latent units ')
+parser.add_argument('--learning_rs', type=list, default=[5e-4,1e-3], help='Number of latent units ')
 
 
 def get_config(inputs):

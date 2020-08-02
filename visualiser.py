@@ -4,6 +4,8 @@ import torchvision
 import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.use("Agg")
+import itertools
+
 
 
 class Visualiser(object):
@@ -50,3 +52,20 @@ class Visualiser(object):
 			plt.plot(x, y, label=str(legend))
 		plt.legend(loc="upper right")
 		plt.savefig(file_location + str(plot_name) + '.jpeg')
+
+	def visualise_4d_ablation_plots(self, param_one, param_two, values, title):
+		import matplotlib
+		matplotlib.use('GTK3Agg')
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
+		x = param_one
+		y = param_two
+		z = values
+		c = [x for x in range(len(values[0]))]
+		combo = list(itertools.product(x, y))
+		for i,j in zip(combo,z):
+			img = ax.scatter([i[0]]*len(c), [i[1]]*len(c), j, c=c, cmap=plt.hot())
+		fig.colorbar(img)
+		plt.show()
+
+
