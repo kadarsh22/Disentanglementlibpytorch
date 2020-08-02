@@ -42,3 +42,11 @@ class Visualiser(object):
 		grid_img = torchvision.utils.make_grid(samples, nrow=10, padding=10, pad_value=1)
 		grid = grid_img.permute(1, 2, 0).type(torch.FloatTensor)
 		plt.imsave(path, grid.data.numpy())
+
+	def visualise_ablation_results(self, y_axis, x_axis, plot_name, legend_list):
+		file_location = os.getcwd() + f'/results/{self.experiment_name}/'
+		plt.figure()
+		for x, y, legend in zip(x_axis, y_axis, legend_list):
+			plt.plot(x, y, label=str(legend))
+		plt.legend(loc="upper right")
+		plt.savefig(file_location + str(plot_name) + '.jpeg')

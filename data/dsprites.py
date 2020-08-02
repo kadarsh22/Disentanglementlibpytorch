@@ -34,7 +34,7 @@ class DSprites(object):
 
 		self.latents_bases = np.concatenate((self.latents_sizes[::-1].cumprod()[::-1][1:], np.array([1, ])))
 		self.num_factors = 6
-		self.show_images_grid()
+		# self.show_images_grid()
 
 	def show_images_grid(self, nrows=10):
 		path = os.getcwd() + f'/results/{self.exp_name}' + '/visualisations/input.jpeg'

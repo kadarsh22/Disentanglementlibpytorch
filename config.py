@@ -23,7 +23,7 @@ parser.add_argument('--model_name', type=str, default='beta_vae', choices=['beta
 																								'model')
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
 																		'cars3d'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=12, help='The number of epochs to run')
+parser.add_argument('--epochs', type=int, default=3, help='The number of epochs to run')
 parser.add_argument('--batch_size', type=int, default=2048, help='The size of batch')
 parser.add_argument('--device_id', type=int, default=0, help='Device id of gpu')
 parser.add_argument('--gan_type', type=str, default='infoGAN', choices=['dcgan', 'infogan'], help='The type of GAN')
@@ -32,13 +32,13 @@ parser.add_argument('--latent_dim', type=int, default=10, help='Number of latent
 parser.add_argument('--learning_r', type=float, default=5e-4, help='Number of latent units ')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
-parser.add_argument('--random_seeds', type=list, default=[123,34,23], help='Random seeds to run for ')
-
+parser.add_argument('--ablation', type=bool, default=True, help='wether to run in ablation study mode or not')
+parser.add_argument('--random_seeds', type=list, default=[123,34,134], help='Random seeds to run for ')
 
 
 def get_config(inputs):
 	config = parser.parse_args(inputs)
-	return config
+	return config.__dict__
 
 
 def save_config(config):
