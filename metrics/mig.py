@@ -14,13 +14,11 @@ class MIG(object):
 		self.data = dsprites
 		self.device_id = device_id
 
-	def compute_mig(self, model, num_train, random_state, batch_size=128):
-		# representations, ground_truth = self.generate_batch_factor_code(model, num_train, random_state, batch_size)
-		#        representations = ground_truth             ## used for testing
-		representations = np.transpose(self.data.sample_latent_values(num_train))
-		ground_truth  = representations
+	def compute_mig(self, model, num_train=10000, batch_size= 64):
+		representations, ground_truth = self.generate_batch_factor_code(model, num_train, batch_size)
 		assert representations.shape[1] == num_train
 		return self._compute_mig(representations, ground_truth)
+
 
 	def _compute_mig(self, representations, ground_truth):
 		"""Computes score based on both training and testing codes and factors."""

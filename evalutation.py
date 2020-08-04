@@ -28,18 +28,17 @@ class Evaluator(object):
 																				num_train=10000, num_eval=5000)
 		factor_vae_metric = factor_vae.compute_factor_vae(model, np.random.RandomState(self.config['random_seed']),
 														  batch_size=64, num_train=10000, num_eval=5000, num_variance_estimate=10000)
-		mutual_info_gap = mig.compute_mig(model, 2000, np.random.RandomState(self.config['random_seed']),
-										  batch_size=128)
+		mutual_info_gap = mig.compute_mig(model, num_train=10000, batch_size=128)
 		metrics = {'beta_vae': beta_vae_metric, 'factor_vae': factor_vae_metric, 'mig': mutual_info_gap[
 			"discrete_mig"]}
 		self.metric_eval['beta_vae'].append(metrics['beta_vae']["eval_accuracy"])
-		self.metric_eval['factor_vae'].append(metrics['factor_vae']["eval_error_rate"])
+		self.metric_eval['factor_vae'].append(metrics['factor_vae']["eval_accuracy"])
 		self.metric_eval['mig'].append(metrics['mig'])
 		logging.info("Epochs  %d / %d Time taken %d sec B-VAE: %.3f, F-VAE %.3F, MIG : %.3f" % (epoch, self.config['epochs'],
 																						 time.time() - start_time,
 																						 metrics['beta_vae'][
 																							 "eval_accuracy"],
 																						 metrics['factor_vae'][
-																							 "eval_error_rate"],
+																							 "eval_accuracy"],
 																						 metrics['mig']))
 		return self.metric_eval

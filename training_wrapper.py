@@ -24,8 +24,7 @@ def run_wrapper(configuration, data, perf_logger):
 	for i in range(configuration['epochs']):
 		model.train()
 		model, loss = model_trainer.train_vae(model, optimizer, i)
-		# if i % configuration['logging_freq']:
-		if True:
+		if i % configuration['logging_freq'] ==0 and i!=0:
 			perf_logger.start_monitoring("Saving Model")
 			saver.save_model((model,), (optimizer,), loss, epoch=i)
 			perf_logger.stop_monitoring("Saving Model")

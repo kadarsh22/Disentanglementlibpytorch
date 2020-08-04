@@ -18,12 +18,12 @@ parser.add_argument('--experiment_name', type=str, default=experiment_name)
 parser.add_argument('--experiment_description', type=str, default=experiment_description)
 parser.add_argument('--model_arch', type=str, default='vae', choices=['vae', 'gan', 'deepinfomax'],
 					help='architecture of model')
-parser.add_argument('--model_name', type=str, default='beta_vae', choices=['beta_vae', 'factor_vae', 'infogan',
+parser.add_argument('--model_name', type=str, default='betavae_cnn', choices=['beta_vae', 'factor_vae', 'infogan',
 																		   'betavae_cnn'], help='architecture of '
 																								'model')
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
 																		'cars3d'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=3, help='The number of epochs to run')
+parser.add_argument('--epochs', type=int, default=100, help='The number of epochs to run')
 parser.add_argument('--batch_size', type=int, default=2048, help='The size of batch')
 parser.add_argument('--device_id', type=int, default=0, help='Device id of gpu')
 parser.add_argument('--gan_type', type=str, default='infoGAN', choices=['dcgan', 'infogan'], help='The type of GAN')
