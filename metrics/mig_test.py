@@ -10,9 +10,9 @@ sys.path.insert(0,"../")
 class MIGTest(absltest.TestCase):
 
 	def test_metric(self):
-		config = get_config()
+		config = get_config(sys.argv[1:])
 		data = DSprites(config)
-		mig = MIG(data)
+		mig = MIG(data,0)
 		representation_function = lambda x: x
 		random_state = np.random.RandomState(0)
 		scores = mig.compute_mig(representation_function, 3000, random_state)

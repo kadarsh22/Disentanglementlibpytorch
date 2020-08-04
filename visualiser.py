@@ -53,7 +53,7 @@ class Visualiser(object):
 		plt.legend(loc="upper right")
 		plt.savefig(file_location + str(plot_name) + '.jpeg')
 
-	def visualise_4d_ablation_plots(self, param_one, param_two, values, title):
+	def visualise_4d_ablation_plots(self, param_one, param_two, values, z_label, x_label, y_label):
 		import matplotlib
 		matplotlib.use('GTK3Agg')
 		fig = plt.figure()
@@ -64,8 +64,12 @@ class Visualiser(object):
 		c = [x for x in range(len(values[0]))]
 		combo = list(itertools.product(x, y))
 		for i,j in zip(combo,z):
-			img = ax.scatter([i[0]]*len(c), [i[1]]*len(c), j, c=c, cmap=plt.hot())
-		fig.colorbar(img)
+			# img = ax.scatter([i[0]]*len(c), [i[1]]*len(c), j, c=c, cmap=plt.hot())
+			ax.plot3D([i[0]]*len(c),[i[1]]*len(c), j)
+		ax.set_xlabel(x_label)
+		ax.set_ylabel(y_label)
+		ax.set_zlabel(z_label)
+		# fig.colorbar(img)
 		plt.show()
 
 

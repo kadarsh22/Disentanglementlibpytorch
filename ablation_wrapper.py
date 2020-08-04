@@ -43,7 +43,6 @@ def run_ablation_wrapper(configuration, data, perf_logger):
 		visualise_ablation_results.visualise_ablation_results(mig, x_axis, 'mig', list_vals[0])
 
 	if count == 2:
-		print('-----------------------------------------------------reached target-------------------')
 		old_experiment_name = configuration['experiment_name']
 		visualise_ablation_results = Visualiser(configuration)
 		bce_loss, kld_loss, loss_total, beta_vae, factor_vae, mig = [], [], [], [], [], []
@@ -65,9 +64,9 @@ def run_ablation_wrapper(configuration, data, perf_logger):
 			factor_vae.append(metrics['factor_vae'])
 			mig.append(metrics['mig'])
 
-		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], loss_total, 'loss_plot')
-		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], kld_loss, 'loss_plot')
-		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], bce_loss, 'loss_plot')
-		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], beta_vae, 'loss_plot')
-		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], factor_vae, 'loss_plot')
-		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], mig, 'loss_plot')
+		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], loss_total, 'total_loss',str(keys[0][:-1]),str(keys[1][:-1]))
+		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], kld_loss, 'kld_loss',str(keys[0][:-1]),str(keys[1][:-1]))
+		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], bce_loss, 'bce_loss',str(keys[0][:-1]),str(keys[1][:-1]))
+		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], beta_vae, 'beta_vae_metric',str(keys[0][:-1]),str(keys[1][:-1]))
+		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], factor_vae, 'factor_vae_metric',str(keys[0][:-1]),str(keys[1][:-1]))
+		visualise_ablation_results.visualise_4d_ablation_plots(list_vals[0], list_vals[1], mig, 'mig',str(keys[0][:-1]),str(keys[1][:-1]))

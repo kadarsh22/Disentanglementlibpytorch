@@ -17,11 +17,11 @@ class BetaVAEMetric(object):
 		self.data = dsprites
 		self.device_id = device_id
 
-	def compute_beta_vae(self, model, random_state, batch_size, num_train, num_eval):
-		# logging.info("Generating training set.")
+	def compute_beta_vae(self, model, random_state, batch_size = 64, num_train = 10000, num_eval = 5000):
+
+
 		train_points, train_labels = self._generate_training_batch(model, batch_size,
 																   num_train, random_state)
-		# logging.info("Generating evaluation set.")
 		eval_points, eval_labels = self._generate_training_batch(model, batch_size,
 																 num_eval, random_state)
 
@@ -32,9 +32,7 @@ class BetaVAEMetric(object):
 		best_c = model_cv.best_params_['C']
 
 		model_test = linear_model.LogisticRegression(C=best_c, random_state=random_state, max_iter=1000, n_jobs=-1)
-		# logging.info("Training sklearn model.")
 		model_test.fit(train_points, train_labels)
-		# logging.info("Evaluating accuracy.")
 		train_accuracy = model_test.score(train_points, train_labels)
 		eval_accuracy = model_test.score(eval_points, eval_labels)
 		scores_dict = {"train_accuracy": train_accuracy, "eval_accuracy": eval_accuracy}
@@ -54,7 +52,7 @@ class BetaVAEMetric(object):
 	def _generate_training_sample(self, model, batch_size, random_state):
 
 		# Select random coordinate to keep fixed.
-		index = random_state.randint(low=1, high=6)
+		index = random_state.randint(low=2, high=6) # 2-size ,3-orientation, 4-X-position 5 - Yposition
 
 		# Sample two mini batches of latent variables.
 		factors1 = self.data.sample_latent(batch_size)
@@ -62,16 +60,20 @@ class BetaVAEMetric(object):
 
 		# Ensure sampled coordinate is the same across pairs of samples.
 		factors1[:, index] = factors2[:, index]
+
 		# Transform latent variables to observation space.
 		observation1 = self.data.sample_images_from_latent(factors1)
 		observation2 = self.data.sample_images_from_latent(factors2)
+
 		#   Compute representations based on the observations.
 		representation1, _ = model.encoder(torch.from_numpy(observation1).cuda(self.device_id))
 		representation2, _ = model.encoder(torch.from_numpy(observation2).cuda(self.device_id))
 		representation1 = representation1.data.cpu().numpy()
 		representation2 = representation2.data.cpu().numpy()
+
 		# representation1 = factors1
 		# representation2 = factors2
+
 		# Compute the feature vector based on differences in representation.
 		feature_vector = np.mean(np.abs(representation1 - representation2), axis=0)
 		return index, feature_vector
