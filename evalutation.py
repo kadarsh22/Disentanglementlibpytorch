@@ -22,7 +22,7 @@ class Evaluator(object):
 	def evaluate_model(self, model, epoch):
 		start_time = time.time()
 		beta_vae = BetaVAEMetric(self.data, self.device)
-		factor_vae = FactorVAEMetric(self.data, self.device)
+		factor_vae = FactorVAEMetric(self.data, self.device, self.config)
 		mig = MIG(self.data, self.device)
 		beta_vae_metric = beta_vae.compute_beta_vae(model, np.random.RandomState(self.config['random_seed']), batch_size=64,
 																				num_train=10000, num_eval=5000)

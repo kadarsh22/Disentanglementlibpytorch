@@ -30,10 +30,11 @@ class MIG(object):
 		# m is [num_latents, num_factors]
 		entropy = self.discrete_entropy(ground_truth)
 		sorted_m = np.sort(m, axis=0)[::-1]
-		dimension_wise_mig = np.divide((sorted_m[0, :] - sorted_m[1, :])[1:], entropy[1:])
+		dimension_wise_mig = np.divide((sorted_m[0, :] - sorted_m[1, :])[1:], entropy[1:]) # 1: skips the first latent code that is constant
 		if np.isnan(np.min(dimension_wise_mig)):
 			logging.info("zeros found while computing MIG")
 			dimension_wise_mig = np.nan_to_num(dimension_wise_mig, copy=True, nan=1.0, posinf=None, neginf=None)
+		dimension_wise_mig[~np.isfinite(dimension_wise_mig)] = 1
 		score_dict["discrete_mig"] = np.mean(dimension_wise_mig)
 		return score_dict
 

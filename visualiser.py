@@ -33,11 +33,16 @@ class Visualiser(object):
 			os.makedirs(file_location)
 		path = file_location + str(epoch_num) + '.jpeg'
 		samples = []
+		z_ = torch.rand((1, self.config['noise_dim'])).cuda()
 		for j in range(self.config['latent_dim']):
 			temp = initial_rep.data[:, j].clone()
 			for k in interpolation:
 				rep_org.data[:, j] = k
-				sample = torch.sigmoid(decoder(rep_org))  # TODO need not be sigmoid
+				if self.config['model_arch'] == 'gan':
+					final_rep = torch.cat((z_, rep_org), dim=1)
+					sample = torch.sigmoid(decoder(final_rep))  # TODO need not be sigmoid
+				else:
+					sample = torch.sigmoid(decoder(rep_org))
 				sample = sample.view(-1, 64, 64)
 				samples.append(sample)
 			rep_org.data[:, j] = temp
