@@ -21,9 +21,14 @@ def get_model(config):
 	elif model_name == 'infogan':
 		from infogan import InfoGan
 		model = InfoGan(latent_dim = config['latent_dim'],noise_dim = config['noise_dim'])
-		d_optimizer = torch.optim.Adam(model.decoder.parameters(), lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
-		g_optimizer = torch.optim.Adam(model.encoder.parameters(), lr=config['learning_r_D'],  betas=(config['beta1'], config['beta2']))
-		info_optimizer = torch.optim.Adam(itertools.chain(model.decoder.parameters(), model.encoder.parameters()), lr=config['learning_r_G'],
-									   betas=(config['beta1'], config['beta2']))
-		optimizer = (d_optimizer,g_optimizer,info_optimizer)
+		g_optimizer = set_optimizer([model.decoder.parameters(), model.encoder.module_Q.parameters(
+            ),model.encoder.latent_cont.parameters()], lr=config['learning_r_G'],config=config)
+		d_optimizer = set_optimizer([model.encoder.module_shared.parameters(), model.encoder.module_D.parameters()], lr=config['learning_r_D'],config=config)
+		optimizer = (d_optimizer, g_optimizer)
 	return model, optimizer
+
+
+def set_optimizer(param_list, lr, config):
+	params_to_optimize = itertools.chain(*param_list)
+	optimizer = torch.optim.Adam(params_to_optimize, lr=lr, betas=(config['beta1'],  config['beta2']))
+	return optimizer

@@ -25,7 +25,7 @@ parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_
 																								'model')
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
 																		'cars3d'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=100, help='The number of epochs to run')
+parser.add_argument('--epochs', type=int, default=30, help='The number of epochs to run')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=False, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='wether to run in ablation study mode or not')
@@ -40,7 +40,7 @@ parser.add_argument('--learning_r', type=float, default=5e-4, help='Number of la
 # GAN configurations
 parser.add_argument('--noise_dim', type=int, default=5, help='Number of noise_dim')
 parser.add_argument('--learning_r_G', type=float, default=0.001, help='learning rate of generator')
-parser.add_argument('--learning_r_D', type=float, default=0.002, help='learning rate of discriminator')
+parser.add_argument('--learning_r_D', type=float, default=0.0002, help='learning rate of discriminator')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 optimizer')
 parser.add_argument('--beta2', type=float, default=0.999, help='beta2 optimizer')
 
@@ -65,3 +65,6 @@ def save_config(config):
 	with open(f'{cwd}/config.json', 'w') as fp:
 		json.dump(config, fp, indent=4, sort_keys=True)
 	return
+
+def str2bool(v):
+	return v.lower() in ('true', '1')

@@ -28,7 +28,6 @@ class Saver(object):
 				'dis_state_dict': model.decoder.state_dict(),
 				'gen_optimizer_state_dict': optimizer[0].state_dict(),
 				'dis_optimizer_state_dict': optimizer[1].state_dict(),
-				'info_optimizer_state_dict' : optimizer[2].state_dict(),
 				'loss': loss
 			}, os.path.join(models_dir, str(epoch) + '_gan.pkl'))
 		else:
