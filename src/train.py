@@ -1,10 +1,10 @@
 import numpy as np
 import torch
-import torch.nn as nn
 import time
 import os
 import random
 import logging
+from utils import *
 
 log = logging.getLogger(__name__)
 torch.autograd.set_detect_anomaly(True)
@@ -41,20 +41,7 @@ class Trainer(object):
 		self.train_hist_vae['kld_loss'].append(kld_loss / self.config['batch_size'])
 		return model, self.train_hist_vae, (optimizer,)
 
-	def _get_training_data(self):
-		images = self.data.images
-		train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
-		return train_loader
 
-	@staticmethod
-	def set_seed(seed):
-		torch.manual_seed(seed)
-		torch.cuda.manual_seed_all(seed)
-		torch.backends.cudnn.deterministic = True
-		torch.backends.cudnn.benchmark = False
-		np.random.seed(seed)
-		random.seed(seed)
-		os.environ['PYTHONHASHSEED'] = str(seed)
 
 	def train_gan(self, model, optimizer, epoch):
 		d_optimizer = optimizer[0]
@@ -73,14 +60,13 @@ class Trainer(object):
 
 
 			z = torch.randn(self.config['batch_size'], self.config['noise_dim'], device=self.device)
-			c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'],
-								device=self.device) * 2 - 1
+			c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], device=self.device) * 2 - 1
 			z = torch.cat((z, c_cond), dim=1)
 
 			d_optimizer.zero_grad()
 
 			prob_real = model.encoder(images)[1]
-			label_real = torch.full(	(self.config['batch_size'],), 1,dtype=torch.float32, device=self.device)
+			label_real = torch.full((self.config['batch_size'],), 1,dtype=torch.float32, device=self.device)
 			loss_D_real = adversarial_loss(prob_real, label_real)
 
 			loss_D_real.backward()
@@ -103,7 +89,7 @@ class Trainer(object):
 			loss_G = adversarial_loss(prob_fake, label_real)
 			loss_c_cont = continuous_loss(c_cond, latent_code)
 
-			loss_info = loss_G + loss_c_cont
+			loss_info = loss_G + self.config['lambda']*loss_c_cont
 			loss_info.backward()
 
 			g_optimizer.step()
@@ -121,3 +107,18 @@ class Trainer(object):
 		self.train_hist_gan['info_loss'].append(info_loss / len(self.train_loader))
 
 		return model, self.train_hist_gan, (d_optimizer, g_optimizer)
+
+	@staticmethod
+	def set_seed(seed):
+		torch.manual_seed(seed)
+		torch.cuda.manual_seed_all(seed)
+		torch.backends.cudnn.deterministic = True
+		torch.backends.cudnn.benchmark = False
+		np.random.seed(seed)
+		random.seed(seed)
+		os.environ['PYTHONHASHSEED'] = str(seed)
+
+	def _get_training_data(self):
+		images = self.data.images
+		train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
+		return train_loader

@@ -6,6 +6,7 @@ class Saver(object):
 	def __init__(self, config):
 		self.config = config
 		self.experiment_name = self.config['experiment_name']
+		self.model_name = self.config['file_name']
 
 	def save_model(self, model, optimizer, loss, epoch=0):
 		cwd = os.path.dirname(os.getcwd()) + f'/results/{self.experiment_name}'  # project root
@@ -34,17 +35,15 @@ class Saver(object):
 			raise NotImplementedError
 
 	def load_model(self, model, optimizer, epoch):
-		cwd = os.path.dirname(os.getcwd())+ f'/results/{self.experiment_name}'  # project root
-		models_dir = cwd + '/models/'
+		models_dir = os.path.dirname(os.getcwd())+ f'/pretrained_models/{self.model_name}'  # project root
+		checkpoint = torch.load(models_dir)
 
-		if self.config.model_arch == 'vae':
-			checkpoint = torch.load(os.path.join(models_dir, str(epoch) + '_vae.pkl'))
+		if self.config['model_arch'] == 'vae':
 			model.load_state_dict(checkpoint['model_state_dict'])
-			optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+			optimizer[0].load_state_dict(checkpoint['optimizer_state_dict'])
 			loss = checkpoint['loss']
 			return model, optimizer, loss
 		elif self.config.model_arch == 'gan':
-			checkpoint = torch.load(os.path.join(models_dir, str(epoch) + '_gan.pkl'))
 			model[0].load_state_dict(checkpoint['gen_state_dict'])
 			model[1].load_state_dict(checkpoint['dis_state_dict'])
 			optimizer[0].load_state_dict(checkpoint['gen_optimizer_state_dict'])

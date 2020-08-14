@@ -35,13 +35,13 @@ class Generator(nn.Module):
         z = z.view(-1, 64, 4, 4)
 
         # Layer 3: [-1, 64, 4, 4] -> [-1, 64, 8, 8]
-        z = F.relu(self.bn3(self.upconv3(z)))
+        z = F.leaky_relu(self.bn3(self.upconv3(z)))
 
         # Layer 4: [-1, 64, 8, 8] -> [-1, 32, 16, 16]
-        z = F.relu(self.bn4(self.upconv4(z)))
+        z = F.leaky_relu(self.bn4(self.upconv4(z)))
 
         # Layer 5: [-1, 32, 16, 16] -> [-1, 32, 32, 32]
-        z = F.relu(self.bn5(self.upconv5(z)))
+        z = F.leaky_relu(self.bn5(self.upconv5(z)))
 
         # Layer 6: [-1, 32, 32, 32] -> [-1, 1, 64, 64]
         img = torch.sigmoid(self.upconv6(z))
@@ -123,17 +123,13 @@ class Reshape(nn.Module):
 
 
 
-
-
-
-
 class InfoGan(object):
-	def __init__(self, latent_dim=5, noise_dim=5, nc=1):
+	def __init__(self, config):
 		super(InfoGan, self).__init__()
 
 
-		self.decoder = Generator(dim_z=5, dim_c_cont=5)
-		self.encoder = Discriminator()
+		self.decoder = Generator(dim_z=config['noise_dim'], dim_c_cont=config['latent_dim'])
+		self.encoder = Discriminator(dim_c_cont=config['latent_dim'])
 
 	def dummy(self):
 		print('This is a dummy function')

@@ -1,5 +1,5 @@
 from visualiser import Visualiser
-from training_wrapper import run_wrapper
+from training_wrapper import run_training_wrapper
 import itertools
 
 
@@ -20,7 +20,7 @@ def run_ablation_wrapper(configuration, data, perf_logger):
 			configuration['experiment_name'] = old_experiment_name + '/' + old_experiment_name + '_' + str(
 				keys[0][:-1]) + '_' + str(i)
 			configuration[str(keys[0][:-1])] = i
-			loss, metrics = run_wrapper(configuration, data, perf_logger)
+			loss, metrics = run_training_wrapper(configuration, data, perf_logger)
 			if configuration['model_arch'] == 'vae':
 				loss_total.append(loss['loss'])
 				bce_loss.append(loss['bce_loss'])

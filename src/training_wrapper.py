@@ -8,7 +8,7 @@ from config import save_config
 import logging
 
 
-def run_wrapper(configuration, data, perf_logger):
+def run_training_wrapper(configuration, data, perf_logger):
 	for key, values in configuration.items():
 		logging.info(' {} : {}'.format(key, values))
 	save_config(configuration)
@@ -41,7 +41,7 @@ def run_wrapper(configuration, data, perf_logger):
 			metrics = evaluator.evaluate_model(model, i)
 			z, _ = model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))
 			perf_logger.start_monitoring("Latent Traversal Visualisations")
-			visualise_results.visualise_latent_traversal(z, model.decoder, 2 / 3, i)
+			visualise_results.visualise_latent_traversal(z, model.decoder, i)
 			perf_logger.stop_monitoring("Latent Traversal Visualisations")
 
 	perf_logger.start_monitoring("Saving Results")

@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0, './models/')
 import torch
 import itertools
-
+from utils import *
 
 def get_model(config):
 	device = torch.device('cuda:' + str(config['device_id']))
@@ -20,7 +20,9 @@ def get_model(config):
 		optimizer = (torch.optim.Adam(model.parameters(), lr=config['learning_r']),)
 	elif model_name == 'infogan':
 		from infogan import InfoGan
-		model = InfoGan(latent_dim = config['latent_dim'],noise_dim = config['noise_dim'])
+		model = InfoGan(config)
+		model.decoder.apply(weights_init_normal)
+		model.encoder.apply(weights_init_normal)
 		g_optimizer = set_optimizer([model.decoder.parameters(), model.encoder.module_Q.parameters(
             ),model.encoder.latent_cont.parameters()], lr=config['learning_r_G'],config=config)
 		d_optimizer = set_optimizer([model.encoder.module_shared.parameters(), model.encoder.module_D.parameters()], lr=config['learning_r_D'],config=config)
