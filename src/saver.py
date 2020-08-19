@@ -34,8 +34,8 @@ class Saver(object):
 		else:
 			raise NotImplementedError
 
-	def load_model(self, model, optimizer, epoch):
-		models_dir = os.path.dirname(os.getcwd())+ f'/pretrained_models/{self.model_name}'  # project root
+	def load_model(self, model, optimizer):
+		models_dir = os.path.dirname(os.getcwd()) + f'/pretrained_models/{self.model_name}'  # project root
 		checkpoint = torch.load(models_dir)
 
 		if self.config['model_arch'] == 'vae':
@@ -50,7 +50,7 @@ class Saver(object):
 			optimizer[1].load_state_dict(checkpoint['dis_optimizer_state_dict'])
 			optimizer[2].load_state_dict(checkpoint['info_optimizer_state_dict'])
 			loss = checkpoint['loss']
-			return (model[0], model[1]), (optimizer[0], optimizer[1],optimizer[2]), loss
+			return (model[0], model[1]), (optimizer[0], optimizer[1], optimizer[2]), loss
 		else:
 			raise NotImplementedError
 

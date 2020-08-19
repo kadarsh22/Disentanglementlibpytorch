@@ -27,9 +27,9 @@ def run_training_wrapper(configuration, data, perf_logger):
 		else:
 			model.encoder.train()
 			model.decoder.train()
-			model, loss, optimizer = model_trainer.train_gan(model, optimizer ,i)
-		if i % configuration['logging_freq'] ==0 and i != 0:
-		# if True:
+			model, loss, optimizer = model_trainer.train_gan(model, optimizer, i)
+		if i % configuration['logging_freq'] == 0 and i != 0:
+			# if True:
 			perf_logger.start_monitoring("Saving Model")
 			saver.save_model(model, optimizer, loss, epoch=i)
 			perf_logger.stop_monitoring("Saving Model")

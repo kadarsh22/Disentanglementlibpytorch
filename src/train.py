@@ -41,8 +41,6 @@ class Trainer(object):
 		self.train_hist_vae['kld_loss'].append(kld_loss / self.config['batch_size'])
 		return model, self.train_hist_vae, (optimizer,)
 
-
-
 	def train_gan(self, model, optimizer, epoch):
 		d_optimizer = optimizer[0]
 		g_optimizer = optimizer[1]
@@ -55,9 +53,7 @@ class Trainer(object):
 		continuous_loss = torch.nn.MSELoss()
 
 		for iter, images in enumerate(self.train_loader):
-
 			images = images.type(torch.FloatTensor).to(self.device)
-
 
 			z = torch.randn(self.config['batch_size'], self.config['noise_dim'], device=self.device)
 			c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], device=self.device) * 2 - 1
@@ -66,7 +62,7 @@ class Trainer(object):
 			d_optimizer.zero_grad()
 
 			prob_real = model.encoder(images)[1]
-			label_real = torch.full((self.config['batch_size'],), 1,dtype=torch.float32, device=self.device)
+			label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
 			loss_D_real = adversarial_loss(prob_real, label_real)
 
 			loss_D_real.backward()
@@ -74,7 +70,7 @@ class Trainer(object):
 			data_fake = model.decoder(z)
 			prob_fake_D = model.encoder(data_fake.detach())[1]
 
-			label_fake = torch.full((self.config['batch_size'],), 0,dtype=torch.float32, device=self.device)
+			label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 			loss_D_fake = adversarial_loss(prob_fake_D, label_fake)
 
 			loss_D_fake.backward()
@@ -84,12 +80,12 @@ class Trainer(object):
 
 			g_optimizer.zero_grad()
 
-			latent_code , prob_fake = model.encoder(data_fake)
+			latent_code, prob_fake = model.encoder(data_fake)
 
 			loss_G = adversarial_loss(prob_fake, label_real)
 			loss_c_cont = continuous_loss(c_cond, latent_code)
 
-			loss_info = loss_G + self.config['lambda']*loss_c_cont
+			loss_info = loss_G + self.config['lambda'] * loss_c_cont
 			loss_info.backward()
 
 			g_optimizer.step()

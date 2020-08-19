@@ -11,11 +11,11 @@ Generator Model Definition
 class Generator(nn.Module):
     def __init__(self, dim_z=5, dim_c_cont=5):
         super(Generator, self).__init__()
-        self.dim_latent = dim_z +  dim_c_cont
+        self.dim_latent = dim_z + dim_c_cont
         self.fc1 = nn.Linear(in_features=self.dim_latent, out_features=128, bias=False)
         self.bn1 = nn.BatchNorm1d(num_features=128)
-        self.fc2 = nn.Linear(in_features=128, out_features=4*4*64, bias=False)
-        self.bn2 = nn.BatchNorm1d(4*4*64)
+        self.fc2 = nn.Linear(in_features=128, out_features=4 * 4 * 64, bias=False)
+        self.bn2 = nn.BatchNorm1d(4 * 4 * 64)
         self.upconv3 = nn.ConvTranspose2d(in_channels=64, out_channels=64, kernel_size=4, stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(64)
         self.upconv4 = nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=1)
@@ -49,11 +49,9 @@ class Generator(nn.Module):
         return img
 
 
-
 class Discriminator(nn.Module):
-    '''Shared Part of Discriminator and Recognition Model'''
 
-    def __init__(self,  dim_c_cont=5):
+    def __init__(self, dim_c_cont=5):
         super(Discriminator, self).__init__()
         self.dim_c_cont = dim_c_cont
         # Shared layers
@@ -82,12 +80,12 @@ class Discriminator(nn.Module):
                                     stride=2,
                                     padding=1)),
             nn.LeakyReLU(negative_slope=0.1, inplace=True),
-            Reshape(-1, 64*4*4),
-            spectral_norm(nn.Linear(in_features=64*4*4, out_features=128)),
+            Reshape(-1, 64 * 4 * 4),
+            spectral_norm(nn.Linear(in_features=64 * 4 * 4, out_features=128)),
             nn.LeakyReLU(negative_slope=0.1, inplace=True),
         )
 
-        # Layer for Disciminating
+        # Layer for Discriminating
         self.module_D = nn.Sequential(
             spectral_norm(nn.Linear(in_features=128, out_features=1)),
             nn.Sigmoid()
@@ -98,19 +96,18 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(negative_slope=0.1, inplace=True),
         )
 
-
         self.latent_cont = spectral_norm(nn.Linear(
             in_features=128, out_features=self.dim_c_cont))
 
     def forward(self, z):
         z = z.type(torch.cuda.FloatTensor)
-        out = self.module_shared(z.view(-1,1,64,64))
+        out = self.module_shared(z.view(-1, 1, 64, 64))
         probability = self.module_D(out)
         probability = probability.squeeze()
         internal_Q = self.module_Q(out)
         c_cont = self.latent_cont(internal_Q)
 
-        return c_cont , probability
+        return c_cont, probability
 
 
 class Reshape(nn.Module):
@@ -122,14 +119,12 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 
-
 class InfoGan(object):
-	def __init__(self, config):
-		super(InfoGan, self).__init__()
+    def __init__(self, config):
+        super(InfoGan, self).__init__()
 
+        self.decoder = Generator(dim_z=config['noise_dim'], dim_c_cont=config['latent_dim'])
+        self.encoder = Discriminator(dim_c_cont=config['latent_dim'])
 
-		self.decoder = Generator(dim_z=config['noise_dim'], dim_c_cont=config['latent_dim'])
-		self.encoder = Discriminator(dim_c_cont=config['latent_dim'])
-
-	def dummy(self):
-		print('This is a dummy function')
+    def dummy(self):
+        print('This is a dummy function')

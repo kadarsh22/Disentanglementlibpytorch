@@ -20,6 +20,7 @@ def main(configuration):
 	else:
 		run_training_wrapper(configuration, data, perf_logger)
 
+
 if __name__ == "__main__":
 	config = get_config(sys.argv[1:])
 	main(config)
