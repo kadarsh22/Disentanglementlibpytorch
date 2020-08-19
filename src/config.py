@@ -25,8 +25,8 @@ parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_
 																								'model')
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
 																		'cars3d'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=31, help='The number of epochs to run')
-parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
+parser.add_argument('--epochs', type=int, default=41, help='The number of epochs to run')
+parser.add_argument('--logging_freq', type=int, default=2, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='wether to run in ablation study mode or not')
 parser.add_argument('--evaluation', type=bool, default=False, help='wether to run in evaluation mode or not')
