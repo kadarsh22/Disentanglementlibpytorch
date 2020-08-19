@@ -20,8 +20,8 @@ def run_evaluation_wrapper(configuration, data, perf_logger):
 	visualise_results = Visualiser(configuration)
 	perf_logger.stop_monitoring("Fetching data, models and class instantiations")
 
-	model, optimizer, loss = saver.load_model(model=model, optimizer=optimizer, epoch=0)
-	metrics = evaluator.evaluate_model(model.eval(), epoch=0)
+	model, optimizer, loss = saver.load_model(model=model, optimizer=optimizer)
+	metrics = evaluator.evaluate_model(model, epoch=0)
 	z, _ = model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))
 	visualise_results.visualise_latent_traversal(z, model.decoder, 0)
 	saver.save_results(metrics, 'metrics')

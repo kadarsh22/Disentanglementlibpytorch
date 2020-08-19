@@ -20,6 +20,11 @@ class Evaluator(object):
 		self.mode = config['full_data']
 
 	def evaluate_model(self, model, epoch):
+		if self.config['model_arch'] == 'gan':
+			model.encoder.to(self.device)
+			model.decoder.to(self.device)
+			model.encoder.eval()
+			model.decoder.eval()
 		start_time = time.time()
 		beta_vae = BetaVAEMetric(self.data, self.device)
 		factor_vae = FactorVAEMetric(self.data, self.device, self.config)

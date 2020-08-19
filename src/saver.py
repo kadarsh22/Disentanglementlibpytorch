@@ -25,8 +25,8 @@ class Saver(object):
 		elif self.config['model_arch'] == 'gan':
 			torch.save({
 				'epoch': epoch,
-				'gen_state_dict': model.encoder.state_dict(),
-				'dis_state_dict': model.decoder.state_dict(),
+				'gen_state_dict': model.decoder.state_dict(),
+				'dis_state_dict': model.encoder.state_dict(),
 				'gen_optimizer_state_dict': optimizer[0].state_dict(),
 				'dis_optimizer_state_dict': optimizer[1].state_dict(),
 				'loss': loss
@@ -43,14 +43,13 @@ class Saver(object):
 			optimizer[0].load_state_dict(checkpoint['optimizer_state_dict'])
 			loss = checkpoint['loss']
 			return model, optimizer, loss
-		elif self.config.model_arch == 'gan':
-			model[0].load_state_dict(checkpoint['gen_state_dict'])
-			model[1].load_state_dict(checkpoint['dis_state_dict'])
+		elif self.config['model_arch'] == 'gan':
+			model.encoder.load_state_dict(checkpoint['gen_state_dict'])
+			model.decoder.load_state_dict(checkpoint['dis_state_dict'])
 			optimizer[0].load_state_dict(checkpoint['gen_optimizer_state_dict'])
 			optimizer[1].load_state_dict(checkpoint['dis_optimizer_state_dict'])
-			optimizer[2].load_state_dict(checkpoint['info_optimizer_state_dict'])
 			loss = checkpoint['loss']
-			return (model[0], model[1]), (optimizer[0], optimizer[1], optimizer[2]), loss
+			return model, (optimizer[0], optimizer[1]), loss
 		else:
 			raise NotImplementedError
 
@@ -62,7 +61,6 @@ class Saver(object):
 		torch.save(results, path)
 
 	def load_results(self, filename):
-		# noinspection PyCompatibility
 		file_location = os.path.dirname(os.getcwd()) + f'/results/{self.experiment_name}' + '/experimental_results/'
 		path = file_location + str(filename) + '.pkl'
 		results = torch.load(path)

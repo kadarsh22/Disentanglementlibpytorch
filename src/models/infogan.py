@@ -12,9 +12,9 @@ class Generator(nn.Module):
     def __init__(self, dim_z=5, dim_c_cont=5):
         super(Generator, self).__init__()
         self.dim_latent = dim_z + dim_c_cont
-        self.fc1 = nn.Linear(in_features=self.dim_latent, out_features=128, bias=False)
+        self.fc1 = nn.Linear(in_features=self.dim_latent, out_features=128)
         self.bn1 = nn.BatchNorm1d(num_features=128)
-        self.fc2 = nn.Linear(in_features=128, out_features=4 * 4 * 64, bias=False)
+        self.fc2 = nn.Linear(in_features=128, out_features=4 * 4 * 64)
         self.bn2 = nn.BatchNorm1d(4 * 4 * 64)
         self.upconv3 = nn.ConvTranspose2d(in_channels=64, out_channels=64, kernel_size=4, stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(64)
@@ -35,13 +35,13 @@ class Generator(nn.Module):
         z = z.view(-1, 64, 4, 4)
 
         # Layer 3: [-1, 64, 4, 4] -> [-1, 64, 8, 8]
-        z = F.leaky_relu(self.bn3(self.upconv3(z)))
+        z = F.leaky_relu(self.bn3(self.upconv3(z)),negative_slope=0.2)
 
         # Layer 4: [-1, 64, 8, 8] -> [-1, 32, 16, 16]
-        z = F.leaky_relu(self.bn4(self.upconv4(z)))
+        z = F.leaky_relu(self.bn4(self.upconv4(z)),negative_slope=0.2)
 
         # Layer 5: [-1, 32, 16, 16] -> [-1, 32, 32, 32]
-        z = F.leaky_relu(self.bn5(self.upconv5(z)))
+        z = F.leaky_relu(self.bn5(self.upconv5(z)),negative_slope=0.2)
 
         # Layer 6: [-1, 32, 32, 32] -> [-1, 1, 64, 64]
         img = torch.sigmoid(self.upconv6(z))
@@ -61,28 +61,28 @@ class Discriminator(nn.Module):
                                     kernel_size=4,
                                     stride=2,
                                     padding=1)),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
             spectral_norm(nn.Conv2d(in_channels=32,
                                     out_channels=32,
                                     kernel_size=4,
                                     stride=2,
                                     padding=1)),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
             spectral_norm(nn.Conv2d(in_channels=32,
                                     out_channels=64,
                                     kernel_size=4,
                                     stride=2,
                                     padding=1)),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
             spectral_norm(nn.Conv2d(in_channels=64,
                                     out_channels=64,
                                     kernel_size=4,
                                     stride=2,
                                     padding=1)),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
             Reshape(-1, 64 * 4 * 4),
             spectral_norm(nn.Linear(in_features=64 * 4 * 4, out_features=128)),
-            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
         )
 
         # Layer for Discriminating

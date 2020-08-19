@@ -30,8 +30,8 @@ parser.add_argument('--logging_freq', type=int, default=2, help='Frequency at wh
 parser.add_argument('--saving_freq', type=int, default=2, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='whether to run in ablation study mode or not')
-parser.add_argument('--evaluation', type=bool, default=False, help='whether to run in evaluation mode or not')
-parser.add_argument('--file_name', type=str, default='45_vae.pkl', help='name of the model to be loaded')
+parser.add_argument('--evaluation', type=bool, default=True, help='whether to run in evaluation mode or not')
+parser.add_argument('--file_name', type=str, default='38_gan.pkl', help='name of the model to be loaded')
 parser.add_argument('--device_id', type=int, default=0, help='Device id of gpu')
 parser.add_argument('--random_seed', type=int, default=456, help='Random seeds to run for ')
 
