@@ -28,11 +28,13 @@ def run_training_wrapper(configuration, data, perf_logger):
 			model.encoder.train()
 			model.decoder.train()
 			model, loss, optimizer = model_trainer.train_gan(model, optimizer, i)
-		if i % configuration['logging_freq'] == 0 and i != 0:
-			# if True:
+
+		if i % configuration['saving_freq'] == 0 and i != 0:
 			perf_logger.start_monitoring("Saving Model")
 			saver.save_model(model, optimizer, loss, epoch=i)
 			perf_logger.stop_monitoring("Saving Model")
+
+		if i % configuration['logging_freq'] == 0 and i!=0:
 			if configuration['model_arch'] == 'vae':
 				model.eval()
 			else:
