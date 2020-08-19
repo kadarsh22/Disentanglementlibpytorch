@@ -28,7 +28,7 @@ class Visualiser(object):
 	def visualise_latent_traversal(self, initial_rep, decoder, epoch_num):
 		interval_start = self.config['interval_start']
 		interval = (2*(interval_start))/10
-		interpolation = torch.arange(-1*interval_start, interval_start + interval, interval)
+		interpolation = torch.arange(-1*interval_start, interval_start, interval)
 		rep_org = initial_rep
 		file_location = os.path.dirname(os.getcwd()) + f'/results/{self.experiment_name}' + '/visualisations/latent_traversal/'
 		if not os.path.exists(file_location):
