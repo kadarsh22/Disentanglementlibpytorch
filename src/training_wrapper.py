@@ -34,7 +34,7 @@ def run_training_wrapper(configuration, data, perf_logger):
 			saver.save_model(model, optimizer, loss, epoch=i)
 			perf_logger.stop_monitoring("Saving Model")
 
-		if i % configuration['logging_freq'] == 0 and i!=0:
+		if i % configuration['logging_freq'] == 0 and i != 0:
 			if configuration['model_arch'] == 'vae':
 				model.eval()
 			else:

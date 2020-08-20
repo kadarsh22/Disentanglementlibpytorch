@@ -3,7 +3,6 @@ import logging
 import numpy as np
 import torch
 from sklearn import linear_model
-from sklearn.model_selection import GridSearchCV
 
 
 class BetaVAEMetric(object):

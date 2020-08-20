@@ -44,8 +44,8 @@ class Saver(object):
 			loss = checkpoint['loss']
 			return model, optimizer, loss
 		elif self.config['model_arch'] == 'gan':
-			model.encoder.load_state_dict(checkpoint['gen_state_dict'])
-			model.decoder.load_state_dict(checkpoint['dis_state_dict'])
+			model.encoder.load_state_dict(checkpoint['dis_state_dict'])
+			model.decoder.load_state_dict(checkpoint['gen_state_dict'])
 			optimizer[0].load_state_dict(checkpoint['gen_optimizer_state_dict'])
 			optimizer[1].load_state_dict(checkpoint['dis_optimizer_state_dict'])
 			loss = checkpoint['loss']

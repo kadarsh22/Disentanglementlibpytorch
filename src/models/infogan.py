@@ -35,13 +35,13 @@ class Generator(nn.Module):
         z = z.view(-1, 64, 4, 4)
 
         # Layer 3: [-1, 64, 4, 4] -> [-1, 64, 8, 8]
-        z = F.leaky_relu(self.bn3(self.upconv3(z)),negative_slope=0.2)
+        z = F.leaky_relu(self.bn3(self.upconv3(z)), negative_slope=0.2)
 
         # Layer 4: [-1, 64, 8, 8] -> [-1, 32, 16, 16]
-        z = F.leaky_relu(self.bn4(self.upconv4(z)),negative_slope=0.2)
+        z = F.leaky_relu(self.bn4(self.upconv4(z)), negative_slope=0.2)
 
         # Layer 5: [-1, 32, 16, 16] -> [-1, 32, 32, 32]
-        z = F.leaky_relu(self.bn5(self.upconv5(z)),negative_slope=0.2)
+        z = F.leaky_relu(self.bn5(self.upconv5(z)), negative_slope=0.2)
 
         # Layer 6: [-1, 32, 32, 32] -> [-1, 1, 64, 64]
         img = torch.sigmoid(self.upconv6(z))

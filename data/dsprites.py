@@ -72,8 +72,8 @@ class DSprites(object):
 	def latent_to_index(self, latents):
 		return np.dot(latents, self.latents_bases).astype(int)
 
-	def sample_latent_values(self, size):
-		latents_sampled = self.sample_latent(size=size)
+	def sample_latent_values(self, latents_sampled):
+
 		indices_sampled = self.latent_to_index(latents_sampled)
 		# imgs_sampled = self.images[indices_sampled]
 		latent_values = self.latents_values[indices_sampled]
