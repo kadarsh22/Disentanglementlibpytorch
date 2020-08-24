@@ -1,7 +1,6 @@
 import sys
 
 sys.path.insert(0, './models/')
-import itertools
 from utils import *
 
 
@@ -23,16 +22,16 @@ def get_model(config):
         model = InfoGan(config)
         model.decoder.apply(weights_init_normal)
         model.encoder.apply(weights_init_normal)
-        d_optimizer = torch.optim.Adam([{'params':model.encoder.conv1.parameters()},
-                                        {'params':model.encoder.conv2.parameters()},
+        d_optimizer = torch.optim.Adam([{'params': model.encoder.conv1.parameters()},
+                                        {'params': model.encoder.conv2.parameters()},
                                         {'params': model.encoder.conv3.parameters()},
                                         {'params': model.encoder.conv4.parameters()},
-                                        {'params':model.encoder.linear1.parameters()},
-                                        {'params':model.encoder.linear2.parameters()},
-                                        {'params':model.encoder.linear3.parameters()}],
+                                        {'params': model.encoder.linear1.parameters()},
+                                        {'params': model.encoder.linear2.parameters()},
+                                        {'params': model.encoder.linear3.parameters()}],
                                        lr=config['learning_r_D'], betas=(config['beta1'], config['beta2']))
-        g_optimizer = torch.optim.Adam([{'params':model.decoder.parameters()}],
+        g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()}],
                                        lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
+        optimizer = (d_optimizer, g_optimizer)
 
-    return model, d_optimizer, g_optimizer
-
+    return model, optimizer

@@ -21,11 +21,11 @@ parser.add_argument('--experiment_description', type=str, default=experiment_des
 parser.add_argument('--model_arch', type=str, default='gan', choices=['vae', 'gan', 'deepinfomax'],
                     help='architecture of model')
 parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_vae', 'factor_vae', 'infogan',
-                                                                           'betavae_cnn'], help='architecture of '
-                                                                                                'model')
+                                                                          'betavae_cnn'], help='architecture of '
+                                                                                               'model')
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
                                                                         'cars3d'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=31, help='The number of epochs to run')
+parser.add_argument('--epochs', type=int, default=10, help='The number of epochs to run')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')

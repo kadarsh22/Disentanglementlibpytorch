@@ -96,7 +96,7 @@ class Discriminator(nn.Module):
             self.linear3)
 
         # Layer for Discriminating
-        self.module_D = nn.Sequential(nn.Linear(in_features=128, out_features=1), nn.Sigmoid() )
+        self.module_D = nn.Sequential(nn.Linear(in_features=128, out_features=1), nn.Sigmoid())
 
         self.module_Q_spectral = nn.Sequential(
             spectral_norm(self.linear2),
@@ -104,21 +104,21 @@ class Discriminator(nn.Module):
             spectral_norm(self.linear3)
         )
 
-
-    def forward(self, z, spectral_norm = True):
+    def forward_no_spectral(self, z):
         z = z.type(torch.cuda.FloatTensor)
-        if spectral_norm is False:
-            out = self.module_shared_no_spectral(z.view(-1, 1, 64, 64))
-            probability = self.module_D(out)
-            probability = probability.squeeze()
-            c_cont = self.module_Q_no_spectral(out)
-            return c_cont, probability
-        else:
-            out = self.module_shared_spectral(z.view(-1, 1, 64, 64))
-            probability = self.module_D(out)
-            probability = probability.squeeze()
-            c_cont = self.module_Q_spectral(out)
-            return c_cont, probability
+        out = self.module_shared_no_spectral(z.view(-1, 1, 64, 64))
+        probability = self.module_D(out)
+        probability = probability.squeeze()
+        c_cont = self.module_Q_no_spectral(out)
+        return c_cont, probability
+
+    def forward(self, z):
+        z = z.type(torch.cuda.FloatTensor)
+        out = self.module_shared_spectral(z.view(-1, 1, 64, 64))
+        probability = self.module_D(out)
+        probability = probability.squeeze()
+        c_cont = self.module_Q_spectral(out)
+        return c_cont, probability
 
 
 class Reshape(nn.Module):
