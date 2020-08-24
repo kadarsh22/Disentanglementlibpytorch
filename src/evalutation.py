@@ -40,8 +40,9 @@ class Evaluator(object):
                                                           batch_size=64, num_train=10000, num_eval=5000,
                                                           num_variance_estimate=10000)
         mutual_info_gap = mig.compute_mig(model, num_train=10000, batch_size=128)
-        metrics = {'beta_vae': beta_vae_metric, 'factor_vae': factor_vae_metric, 'mig': mutual_info_gap[
-            "discrete_mig"], 'dci_metric': dci}
+        dci_average = (dci['disentanglement']+dci['completeness'] +dci['informativeness'])/3
+        metrics = {'beta_vae': beta_vae_metric, 'factor_vae': factor_vae_metric, 'mig': mutual_info_gap,
+                   'dci_metric': dci_average }
         self.metric_eval['beta_vae'].append(metrics['beta_vae']["eval_accuracy"])
         self.metric_eval['factor_vae'].append(metrics['factor_vae']["eval_accuracy"])
         self.metric_eval['mig'].append(metrics['mig'])

@@ -1,19 +1,31 @@
 import torch
 import numpy as np
+from scipy.stats import truncnorm
 
 TINY = 1e-12
 
 def weights_init_normal(m):
     classname = m.__class__.__name__
-    if classname.find("Conv") != -1:
-        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
-        torch.nn.init.constant_(m.bias.data, 0.0)
-    elif classname.find("BatchNorm") != -1:
-        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+    if classname.find("Conv2d") != -1:
+        truncated_normal_(m.weight.data, std=0.02)
         torch.nn.init.constant_(m.bias.data, 0.0)
     elif classname.find("Linear") != -1:
         torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
         torch.nn.init.constant_(m.bias.data, 0.0)
+    elif classname.find("ConvTranspose2d") != -1:
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
+        torch.nn.init.constant_(m.bias.data, 0.0)
+
+
+
+def truncated_normal_(tensor, mean=0, std=1):
+    size = tensor.shape
+    tmp = tensor.new_empty(size + (4,)).normal_()
+    valid = (tmp < 2) & (tmp > -2)
+    ind = valid.max(-1, keepdim=True)[1]
+    tensor.data.copy_(tmp.gather(-1, ind).squeeze(-1))
+    tensor.data.mul_(std).add_(mean)
+    return tensor
 
 def mse(predicted, target):
     ''' mean square error '''
@@ -72,3 +84,5 @@ def entropic_scores(r):
     ps = r / np.sum(r, axis=0)  # 'probabilities'
     hs = [1 - norm_entropy(p) for p in ps.T]
     return hs
+
+
