@@ -4,8 +4,6 @@ import random
 from utils import *
 
 log = logging.getLogger(__name__)
-torch.autograd.set_detect_anomaly(True)
-
 
 class Trainer(object):
 
@@ -42,7 +40,7 @@ class Trainer(object):
         d_optimizer = optimizer[0]
         g_optimizer = optimizer[1]
         start_time = time.time()
-        d_loss, g_loss, info_loss = 0, 0, 0
+        d_loss_summary, g_loss_summary, info_loss_summary = 0, 0, 0
         model.encoder.to(self.device)
         model.decoder.to(self.device)
 
@@ -89,13 +87,17 @@ class Trainer(object):
             D_loss = loss_real + loss
             d_optimizer.step()
 
-            d_loss = d_loss + D_loss.item()
-            g_loss = g_loss + G_loss.item()
+            d_loss_summary = d_loss_summary + D_loss.item()
+            g_loss_summary = g_loss_summary + G_loss.item()
+            info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
         #
-        logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.3f, G_Loss %.3F" % (
+        logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
-            g_loss / len(self.train_loader), d_loss / len(self.train_loader)))
-        return model, g_loss, (d_optimizer, g_optimizer)
+            g_loss / len(self.train_loader), d_loss_summary / len(self.train_loader)))
+        self.train_hist_gan['d_loss'].append(d_loss_summary/ len(self.train_loader))
+        self.train_hist_gan['g_loss'].append(g_loss_summary/ len(self.train_loader))
+        self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
+        return model,self.train_hist_gan, (d_optimizer, g_optimizer)
 
     @staticmethod
     def set_seed(seed):

@@ -28,11 +28,11 @@ class Evaluator(object):
             model.encoder.eval()
             model.decoder.eval()
         start_time = time.time()
-        beta_vae = BetaVAEMetric(self.data, self.device)
+        beta_vae = BetaVAEMetric(self.data, self.device, self.config)
         factor_vae = FactorVAEMetric(self.data, self.device, self.config)
         DCI_metric = DCIMetric(self.data, self.device)
         dci = DCI_metric.compute_dci(model)
-        mig = MIG(self.data, self.device)
+        mig = MIG(self.data, self.device,self.config)
         beta_vae_metric = beta_vae.compute_beta_vae(model, np.random.RandomState(self.config['random_seed']),
                                                     batch_size=64,
                                                     num_train=10000, num_eval=5000)
@@ -40,12 +40,12 @@ class Evaluator(object):
                                                           batch_size=64, num_train=10000, num_eval=5000,
                                                           num_variance_estimate=10000)
         mutual_info_gap = mig.compute_mig(model, num_train=10000, batch_size=128)
-        dci_average = (dci['disentanglement']+dci['completeness'] +dci['informativeness'])/3
+        dci_average = (dci['disentanglement'] + dci['completeness'] + dci['informativeness']) / 3
         metrics = {'beta_vae': beta_vae_metric, 'factor_vae': factor_vae_metric, 'mig': mutual_info_gap,
-                   'dci_metric': dci_average }
+                   'dci_metric': dci_average}
         self.metric_eval['beta_vae'].append(metrics['beta_vae']["eval_accuracy"])
         self.metric_eval['factor_vae'].append(metrics['factor_vae']["eval_accuracy"])
-        self.metric_eval['mig'].append(metrics['mig'])
+        self.metric_eval['mig'].append(metrics['mig']["discrete_mig"])
         logging.info('Disentanglement Vector')
         logging.info(dci['disentanglement_vector'])
         logging.info('completeness_vector')
@@ -53,7 +53,8 @@ class Evaluator(object):
         logging.info('informativeness_vector')
         logging.info(dci['informativeness_vector'])
         logging.info(
-            "Epochs  %d / %d Time taken %d sec B-VAE: %.3f, F-VAE %.3F, MIG : %.3f Disentanglement: %.3f Completeness: "
+            "Epochs  %d / %d Time taken %d sec B-VAE: %.3f, F-VAE %.3F, MIG : %.3f Disentanglement: %.3f "
+            "Completeness: "
             "%.3f Informativeness: %.3f " % (
                 epoch, self.config['epochs'],
                 time.time() - start_time,
@@ -61,7 +62,7 @@ class Evaluator(object):
                     "eval_accuracy"],
                 metrics['factor_vae'][
                     "eval_accuracy"],
-                metrics['mig'], dci['disentanglement'],
+                metrics['mig']["discrete_mig"], dci['disentanglement'],
                 dci['completeness'], dci['informativeness']
             ))
         return self.metric_eval

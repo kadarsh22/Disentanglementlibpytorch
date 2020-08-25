@@ -19,7 +19,7 @@ class Visualiser(object):
 			os.makedirs(file_location)
 		plt.figure()
 		for name, values in results.items():
-			x_axis = list(range(len(values)))
+			x_axis = [self.config['logging_freq'] * i for i in range(len(values))]
 			plt.plot(x_axis, values, label=name)
 		plt.legend(loc="upper right")
 		path = file_location + str(plot_type) + '.jpeg'

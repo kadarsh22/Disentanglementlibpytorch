@@ -11,12 +11,15 @@ class MIG(object):
             Implementation of the metric in: MIG
     """
 
-    def __init__(self, dsprites, device_id):
+    def __init__(self, dsprites, device_id,config):
         super(MIG, self).__init__()
         self.data = dsprites
         self.device_id = device_id
+        self.config = config
 
     def compute_mig(self, model, num_train=10000, batch_size=64):
+
+        score_dict = {}
         representations, ground_truth = self.generate_batch_factor_code(model, num_train, batch_size)
 
         normalized_representation = self.normalize_data(representations)
@@ -31,9 +34,10 @@ class MIG(object):
 
         entropy = self.discrete_entropy(discrete_ground_truth)
         sorted_m = np.sort(m, axis=0)[::-1]
-        mig_score = np.mean(np.divide(sorted_m[0,1 :] - sorted_m[1, 1:], entropy[1:]))
-        return mig_score
-
+        dimension_wise_mig = np.divide((sorted_m[0, :] - sorted_m[1, :])[1:],entropy[1:])  # 1: skips the first latent code that is constant
+        logging.info(dimension_wise_mig)
+        score_dict["discrete_mig"] = np.mean(dimension_wise_mig[self.config['mig_start']:])
+        return score_dict
 
     def discrete_entropy(self,ys):
         """Compute discrete mutual information."""
