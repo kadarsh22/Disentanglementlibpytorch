@@ -2,6 +2,7 @@ import time
 import os
 import random
 from utils import *
+from sklearn.model_selection import train_test_split
 
 log = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class Trainer(object):
         self.config = config
         self.device = torch.device('cuda:' + str(config['device_id']))
         self.train_loader = self._get_training_data()
+        #self.train_loader , self.test_loader = self._get_classifier_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
 
@@ -99,6 +101,45 @@ class Trainer(object):
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
         return model,self.train_hist_gan, (d_optimizer, g_optimizer)
 
+    def train_classifier(self ,  model, optimizer, epoch):
+        running_loss = 0.0
+        criterion = torch.nn.CrossEntropyLoss()
+        for i, data in enumerate(self.train_loader, 0):
+
+            inputs, labels = data
+            inputs = inputs.cuda()
+            labels = labels.cuda()
+
+            # zero the parameter gradients
+            optimizer.zero_grad()
+
+            # forward + backward + optimize
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            # print statistics
+            running_loss += loss.item()
+            if i % 2000 == 1999:  # print every 2000 mini-batches
+                print('[%d, %5d] loss: %.3f' %
+                      (epoch + 1, i + 1, running_loss / 2000))
+                running_loss = 0.0
+
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for data in self.test_loader:
+                images, labels = data
+                outputs = model(images.cuda())
+                _, predicted = torch.max(outputs.data.cpu(), 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+        print('Accuracy of the network on the 10000 test images: %d %%' % (
+                100 * correct / total))
+        return model ,optimizer ,epoch
+
     @staticmethod
     def set_seed(seed):
         torch.manual_seed(seed)
@@ -113,3 +154,13 @@ class Trainer(object):
         images = self.data.images
         train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
         return train_loader
+
+    def _get_classifier_training_data(self):
+        images = self.data.images
+        labels = torch.from_numpy(self.data.latents_classes[:,3]).type(torch.LongTensor)
+        X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size = 0.2, random_state = 42)
+        train_dataset = NewDataset(torch.from_numpy(X_train),y_train)
+        test_dataset = NewDataset(torch.from_numpy(X_test),y_test)
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.config['batch_size'], shuffle=True)
+        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=self.config['batch_size'], shuffle=True)
+        return train_loader , test_loader

@@ -27,15 +27,13 @@ def run_training_wrapper(configuration, data, perf_logger):
 		if configuration['model_arch'] == 'vae':
 			model.train()
 			model, loss, optimizer = model_trainer.train_vae(model, optimizer[0], i)
-		else:
+		elif configuration['model_arch'] == 'gan':
 			model.encoder.train()
 			model.decoder.train()
 			model, loss, optimizer = model_trainer.train_gan(model, optimizer, i)
-
-		if i % configuration['saving_freq'] == 0 and i != 0:
-			perf_logger.start_monitoring("Saving Model")
-			saver.save_model(model, optimizer, loss, epoch=i)
-			perf_logger.stop_monitoring("Saving Model")
+		elif configuration['model_arch'] == 'cnn':
+			model.train()
+			model , optimizer ,loss = model_trainer.train_classifier(model,optimizer,i)
 
 		if i % configuration['logging_freq'] == 0 and i != 0:
 			if configuration['model_arch'] == 'vae':

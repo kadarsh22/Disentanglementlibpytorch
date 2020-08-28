@@ -33,5 +33,8 @@ def get_model(config):
         g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()}],
                                        lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
         optimizer = (d_optimizer, g_optimizer)
-
+    elif model_name == 'cnn':
+        from classifier import Classifier
+        model = Classifier()
+        optimizer = torch.optim.Adam(model.parameters(),lr=1e-4)
     return model, optimizer
