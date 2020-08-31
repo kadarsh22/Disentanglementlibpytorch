@@ -3,6 +3,9 @@ import os
 import random
 from utils import *
 from sklearn.model_selection import train_test_split
+from mine import Mine
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 log = logging.getLogger(__name__)
 
@@ -38,20 +41,22 @@ class Trainer(object):
         self.train_hist_vae['kld_loss'].append(kld_loss / self.config['batch_size'])
         return model, self.train_hist_vae, (optimizer,)
 
-    def train_gan(self, model, optimizer, epoch):
+    def train_gan(self, model, optimizer, epoch ,info_optimizer):
         d_optimizer = optimizer[0]
         g_optimizer = optimizer[1]
         start_time = time.time()
-        d_loss_summary, g_loss_summary, info_loss_summary = 0, 0, 0
+        d_loss_summary, g_loss_summary, info_loss_summary , mig_loss_summary = 0, 0, 0 ,0
         model.encoder.to(self.device)
         model.decoder.to(self.device)
 
         adversarial_loss = torch.nn.BCELoss()
         criterionQ_con = log_gaussian()
+        mig_gap_loss = torch.nn.MSELoss()
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
         for iter, images in enumerate(self.train_loader):
+
             images = images.type(torch.FloatTensor).to(self.device)
             z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
                                  device=self.device) * 2 - 1
@@ -89,17 +94,107 @@ class Trainer(object):
             D_loss = loss_real + loss
             d_optimizer.step()
 
+
+            z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                                 device=self.device) * 2 - 1
+            c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                                device=self.device) * 2 - 1
+
+            if iter % 500 == 0:
+                factor_one_net, factor_two_net, ground_truth_idx, factor_one_idx, factor_two_idx = self.mine(model)
+
+
+            info_optimizer.zero_grad()
+            z = torch.cat((z_noise, c_cond), dim=1)
+
+            fake_x = model.decoder(z)
+            latent_code_gen, _ = model.encoder.forward_no_spectral(fake_x)
+
+            mutual_one = factor_one_net(torch.cat((c_cond[:, ground_truth_idx].view(-1,1), latent_code_gen[:, factor_one_idx].view(-1,1)), dim=1))
+            mutual_two = factor_two_net(torch.cat((c_cond[:, ground_truth_idx].view(-1,1), latent_code_gen[:, factor_two_idx].view(-1,1)), dim=1))
+
+            loss_mutual = -1*mig_gap_loss(mutual_one,mutual_two)
+
+
+            loss_mutual.backward()
+            info_optimizer.step()
+
+            mig_loss_summary = mig_loss_summary + loss_mutual.item()
+
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
         #
-        logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F" % (
+        logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F , MIG Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
-            g_loss / len(self.train_loader), d_loss_summary / len(self.train_loader)))
+            g_loss / len(self.train_loader), d_loss_summary / len(self.train_loader),mig_loss_summary / len(self.train_loader)))
         self.train_hist_gan['d_loss'].append(d_loss_summary/ len(self.train_loader))
         self.train_hist_gan['g_loss'].append(g_loss_summary/ len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
-        return model,self.train_hist_gan, (d_optimizer, g_optimizer)
+        self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
+        return model,self.train_hist_gan, (d_optimizer, g_optimizer ) ,info_optimizer
+
+
+    def mine(self,model):
+        ground_truth_idx = np.random.randint(low=0, high=self.config['latent_dim'])
+        factor_one_idx, factor_two_idx = np.random.choice(4, 2, replace=False)
+
+        factor_one_net = Mine().to(self.device)
+        factor_two_net = Mine().to(self.device)
+        optimizer_net_one = torch.optim.Adam(factor_one_net.parameters(), lr=0.01)
+        optimizer_net_two = torch.optim.Adam(factor_two_net.parameters(), lr=0.01)
+
+        for i in range(20):
+            ## joint sampling
+            z_noise_new = torch.rand(1024, self.config['noise_dim'], dtype=torch.float32,
+                                     device=self.device) * 2 - 1
+            c_cond_new = torch.rand(1024, self.config['latent_dim'], dtype=torch.float32,
+                                    device=self.device) * 2 - 1
+
+            z = torch.cat((z_noise_new, c_cond_new), dim=1)
+
+            fake_x = model.decoder(z)
+            latent_code_joint, _ = model.encoder.forward_no_spectral(fake_x)
+
+            ##marginal_sampling
+            z_noise_marg = torch.rand(1024, self.config['noise_dim'], dtype=torch.float32,
+                                      device=self.device) * 2 - 1
+            c_cond_marg = torch.rand(1024, self.config['latent_dim'], dtype=torch.float32,
+                                     device=self.device) * 2 - 1
+            z_marg = torch.cat((z_noise_marg, c_cond_marg), dim=1)
+
+            fake_x_marginal = model.decoder(z_marg)
+            latent_code_marginal, _ = model.encoder.forward_no_spectral(fake_x_marginal)
+
+            ## Train Network 1
+            inp_net_one_joint = torch.cat(
+                (c_cond_new[:, ground_truth_idx].view(-1, 1), latent_code_joint[:, factor_one_idx].view(-1, 1)),
+                dim=1).cuda()
+            inp_net_one_marginal = torch.cat(
+                (c_cond_new[:, ground_truth_idx].view(-1, 1), latent_code_marginal[:, factor_one_idx].view(-1, 1)),
+                dim=1).cuda()
+            loss_factor_one = torch.log(torch.mean(torch.exp(factor_one_net(inp_net_one_marginal)))) - torch.mean(
+                factor_one_net(inp_net_one_joint))
+            factor_one_net.zero_grad()
+            loss_factor_one.backward()
+            optimizer_net_one.step()
+
+            inp_net_two_joint = torch.cat((c_cond_new[:, ground_truth_idx].detach().view(-1, 1),
+                                           latent_code_joint[:, factor_two_idx].detach().view(-1, 1)), dim=1).cuda()
+            inp_net_two_marginal = torch.cat((c_cond_new[:, ground_truth_idx].detach().view(-1, 1),
+                                              latent_code_marginal[:, factor_two_idx].detach().view(-1, 1)),
+                                             dim=1).cuda()
+            pred_xy_net_two = factor_two_net(inp_net_two_joint)
+            pred_x_y_net_two = factor_two_net(inp_net_two_marginal)
+            loss_factor_two = torch.log(torch.mean(torch.exp(pred_x_y_net_two))) - torch.mean(pred_xy_net_two)
+
+            factor_two_net.zero_grad()
+            loss_factor_two.backward()
+            optimizer_net_two.step()
+        return factor_one_net , factor_two_net ,ground_truth_idx ,factor_one_idx ,factor_two_idx
+
+
+
 
     def train_classifier(self ,  model, optimizer, epoch):
         running_loss = 0.0
