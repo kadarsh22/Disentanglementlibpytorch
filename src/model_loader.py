@@ -2,6 +2,7 @@ import sys
 
 sys.path.insert(0, './models/')
 from utils import *
+import itertools
 
 
 def get_model(config):
@@ -32,7 +33,18 @@ def get_model(config):
                                        lr=config['learning_r_D'], betas=(config['beta1'], config['beta2']))
         g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()}],
                                        lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
-        optimizer = (d_optimizer, g_optimizer)
+        info_optimizer = torch.optim.Adam(itertools.chain(model.decoder.parameters(),
+                                                          model.encoder.conv1.parameters(),
+                                                          model.encoder.conv2.parameters(),
+                                                          model.encoder.conv3.parameters(),
+                                                          model.encoder.conv4.parameters(),
+                                                          model.encoder.linear1.parameters(),
+                                                          model.encoder.linear2.parameters(),
+                                                          model.encoder.linear3.parameters()
+                                                          ), lr=0.0001,
+                                         betas=(config['beta1'], config['beta2']))
+
+        optimizer = (d_optimizer, g_optimizer,info_optimizer)
     elif model_name == 'cnn':
         from classifier import Classifier
         model = Classifier()
