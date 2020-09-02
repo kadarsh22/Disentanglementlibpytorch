@@ -26,9 +26,9 @@ parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
                                                                         'cars3d'], help='name of the dataset')
 parser.add_argument('--epochs', type=int, default=31, help='The number of epochs to run')
-parser.add_argument('--logging_freq', type=int, default=1, help='Frequency at which result  should be logged')
+parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')
-parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
+parser.add_argument('--full_data', type=bool, default=False, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='whether to run in ablation study mode or not')
 parser.add_argument('--evaluation', type=bool, default=False, help='whether to run in evaluation mode or not')
 parser.add_argument('--file_name', type=str, default='25_gan.pkl', help='name of the model to be loaded')
