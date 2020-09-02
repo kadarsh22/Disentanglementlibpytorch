@@ -48,22 +48,21 @@ class Trainer(object):
     def train_gan(self, model, optimizer, epoch):
         d_optimizer = optimizer[0]
         g_optimizer = optimizer[1]
-        info_optimizer = optimizer[2]
+        cr_optimizer = optimizer[2]
         start_time = time.time()
-        d_loss_summary, g_loss_summary, info_loss_summary, mig_loss_summary = 0, 0, 0, 0
+        d_loss_summary, g_loss_summary, cr_loss = 0, 0, 0
         model.encoder.to(self.device)
         model.decoder.to(self.device)
 
         adversarial_loss = torch.nn.BCELoss()
         criterionQ_con = log_gaussian()
+        categorical_loss = torch.nn.CrossEntropyLoss()
+
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
-        cr_labels = list(itertools.chain.from_iterable(itertools.repeat(x, 64) for x in range(5)))
-        cr_labels_tensor = torch.LongTensor(cr_labels).to(self.device)
-        cross_entropy = torch.nn.CrossEntropyLoss()
+
 
         for iter, images in enumerate(self.train_loader):
-
             images = images.type(torch.FloatTensor).to(self.device)
             z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
                                  device=self.device) * 2 - 1
@@ -101,94 +100,43 @@ class Trainer(object):
             D_loss = loss_real + loss
             d_optimizer.step()
 
-            if iter % 500 == 0:
-                network_one, network_two, network_three, network_four, network_five = self.train_infonce(model)
-
-            info_optimizer.zero_grad()
-
-            z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
-                                 device=self.device) * 2 - 1
-            c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
-                                device=self.device) * 2 - 1
-
-            z = torch.cat((z_noise, c_cond), dim=1)
-
-            fake_x = model.decoder(z)
-            latent_code_gen, prob_fake = model.encoder.forward_no_spectral(fake_x)
-
-
-            cr_inputs = torch.cat((latent_code_gen.view(-1, 1), c_cond.view(-1, 1)), dim=1).view(-1, 5, 2)
-            net_zero_out = network_one(cr_inputs[:, 0, :])
-            net_one_out = network_two(cr_inputs[:, 1, :])
-            net_two_out = network_three(cr_inputs[:, 2, :])
-            net_three_out = network_four(cr_inputs[:, 3, :])
-            net_four_out = network_five(cr_inputs[:, 4, :])
-
-            cr_loss = cross_entropy(net_zero_out, cr_labels_tensor[:64]) + cross_entropy(net_one_out, cr_labels_tensor[64:128]) + cross_entropy(
-                net_two_out, cr_labels_tensor[128:192]) + cross_entropy(net_three_out, cr_labels_tensor[192:256] ) + cross_entropy(
-                net_four_out, cr_labels_tensor[256:])
-
-            cr_loss.backward()
-            info_optimizer.step()
+            #CR Loss
+            cr_optimizer.zero_grad()
+            idx_fixed_z, fixed_idx = self._get_idx_fixed_z()
+            idx_fixed_data = model.decoder(idx_fixed_z)
+            cr_logits = model.cr_disc(idx_fixed_data[:self.config['batch_size']], idx_fixed_data[self.config['batch_size']:])
+            loss_cr = self.config['alpha'] * categorical_loss(cr_logits, fixed_idx)
+            loss_cr.backward()
+            cr_optimizer.step()
 
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
-            mig_loss_summary = mig_loss_summary +cr_loss.item()
+            cr_loss = cr_loss + loss_cr.item()
         #
-        logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F , MIG Loss %.5F" % (
+        logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F , CR Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
             g_loss / len(self.train_loader), d_loss_summary / len(self.train_loader),
-            mig_loss_summary / len(self.train_loader)))
+            cr_loss / len(self.train_loader)))
         self.train_hist_gan['d_loss'].append(d_loss_summary / len(self.train_loader))
         self.train_hist_gan['g_loss'].append(g_loss_summary / len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary / len(self.train_loader))
-        self.train_hist_gan['info_loss'].append(info_loss_summary / len(self.train_loader))
-        return model, self.train_hist_gan, (d_optimizer, g_optimizer,info_optimizer)
+        self.train_hist_gan['cr_loss'].append(cr_loss / len(self.train_loader))
+        return model, self.train_hist_gan, (d_optimizer, g_optimizer,cr_optimizer)
 
-    def train_infonce(self, model_gan):
-        model_list = []
-        for i in range(5):
+    def _get_fixed_idx(self):
+        idx_fixed = torch.from_numpy(np.array([np.random.randint(0, self.config['latent_dim'])
+                                               for i in range(self.config['batch_size'])])).to(self.device)
+        code_fixed = np.array([np.random.rand() for i in range(self.config['batch_size'])])
+        latent_pair_one = self._sample()
+        latent_pair_two = self._sample()
+        for i in range(self.config['batch_size']):
+            latent_pair_one[i][-self.config['latent_dim']+idx_fixed[i]] = code_fixed[i]
+            latent_pair_two[i][-self.config['latent_dim']+idx_fixed[i]] = code_fixed[i]
+        z = torch.cat((latent_pair_one, latent_pair_two), dim=0)
+        return z, idx_fixed
 
-            model = InfonceEncoder()
-            model.cuda()
-            optimizer = torch.optim.Adam(model.parameters(),lr=1e-4)
-            criterion = torch.nn.CrossEntropyLoss()
-            label_list = [i for i in range(5)]
-            label_list.remove(i)
-            full_label_list = list(itertools.chain.from_iterable(itertools.repeat(x, 64) for x in label_list))
-            postive_labels = torch.LongTensor([i]*64)
-            negative_labels = torch.LongTensor(full_label_list)
-            labels = torch.cat((postive_labels,negative_labels)).view(-1,1).to(self.device)
-            for j in range(30):
-                z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
-                                         device=self.device) * 2 - 1
-                c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
-                                        device=self.device) * 2 - 1
 
-                z = torch.cat((z_noise, c_cond), dim=1)
-
-                fake_x = model_gan.decoder(z)
-                latent_code, _ = model_gan.encoder.forward_no_spectral(fake_x)
-
-                positive_samples = torch.cat((latent_code.detach().view(-1, 1), c_cond.view(-1, 1)), dim=1).view(-1, 5, 2)[:,i,:]
-                negative_samples_list = list(torch.unbind(c_cond,dim=1))
-                negative_samples_list.pop(i)
-                negative_samples = torch.stack([torch.cat((negative_samples_list[i].view(-1,1),latent_code[:,i].view(-1,1)),dim=1) for i in range(4)]).view(-1,2)
-                input_tensor = torch.cat((positive_samples, negative_samples.detach()))
-                dataset = NewDataset(input_tensor,labels)
-                train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.config['batch_size'], shuffle=True)
-
-                for input, label_batch in train_loader:
-                    optimizer.zero_grad()
-                    outputs = model(input)
-                    loss = criterion(outputs, label_batch.view(-1))
-                    model.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-
-            model_list.append(model)
-        return model_list[0] ,model_list[1] ,model_list[2] , model_list[4] , model_list[4]
 
     def train_classifier(self, model, optimizer, epoch):
         running_loss = 0.0
@@ -253,3 +201,12 @@ class Trainer(object):
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.config['batch_size'], shuffle=True)
         test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=self.config['batch_size'], shuffle=True)
         return train_loader, test_loader
+
+    def _sample(self):
+        z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                             device=self.device) * 2 - 1
+        c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                            device=self.device) * 2 - 1
+
+        z = torch.cat((z_noise, c_cond), dim=1)
+        return z

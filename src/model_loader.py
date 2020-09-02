@@ -23,6 +23,7 @@ def get_model(config):
         model = InfoGan(config)
         model.decoder.apply(weights_init_normal)
         model.encoder.apply(weights_init_normal)
+        model.cr_disc.apply(weights_init_normal)
         d_optimizer = torch.optim.Adam([{'params': model.encoder.conv1.parameters()},
                                         {'params': model.encoder.conv2.parameters()},
                                         {'params': model.encoder.conv3.parameters()},
@@ -33,18 +34,12 @@ def get_model(config):
                                        lr=config['learning_r_D'], betas=(config['beta1'], config['beta2']))
         g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()}],
                                        lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
-        info_optimizer = torch.optim.Adam(itertools.chain(model.decoder.parameters(),
-                                                          model.encoder.conv1.parameters(),
-                                                          model.encoder.conv2.parameters(),
-                                                          model.encoder.conv3.parameters(),
-                                                          model.encoder.conv4.parameters(),
-                                                          model.encoder.linear1.parameters(),
-                                                          model.encoder.linear2.parameters(),
-                                                          model.encoder.linear3.parameters()
-                                                          ), lr=0.0001,
-                                         betas=(config['beta1'], config['beta2']))
+        cr_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()},
+                                     {'params': model.cr_disc.parameters()}
+                                     ],
+                                       lr=config['learning_r_CR'], betas=(config['beta1'], config['beta2']))
 
-        optimizer = (d_optimizer, g_optimizer,info_optimizer)
+        optimizer = (d_optimizer, g_optimizer,cr_optimizer)
     elif model_name == 'cnn':
         from classifier import Classifier
         model = Classifier()

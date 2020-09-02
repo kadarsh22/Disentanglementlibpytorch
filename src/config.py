@@ -47,6 +47,7 @@ parser.add_argument('--learning_r_D', type=float, default=0.002, help='learning 
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 optimizer')
 parser.add_argument('--beta2', type=float, default=0.999, help='beta2 optimizer')
 parser.add_argument('--lambda', type=float, default=0.1, help='regularization strength of MI term')
+parser.add_argument('--alpha', type=float, default=0.1, help='regularization strength of MI term')
 parser.add_argument('--interval_start', type=float, default=1, help='latent_traversal visualisation range')
 
 
