@@ -2,13 +2,7 @@ import time
 import os
 import random
 from utils import *
-from sklearn.model_selection import train_test_split
-from contrastive_model import InfonceEncoder
-import os
-import itertools
-torch.autograd.set_detect_anomaly(True)
-
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+# from sklearn.preprocessing import train_test_split
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +17,7 @@ class Trainer(object):
         self.train_loader = self._get_training_data()
         # self.train_loader , self.test_loader = self._get_classifier_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
-        self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
+        self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': [],'cr_loss':[]}
 
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
@@ -50,10 +44,7 @@ class Trainer(object):
         g_optimizer = optimizer[1]
         cr_optimizer = optimizer[2]
         start_time = time.time()
-        d_loss_summary, g_loss_summary, cr_loss = 0, 0, 0
-        model.encoder.to(self.device)
-        model.decoder.to(self.device)
-
+        d_loss_summary, g_loss_summary, cr_loss, info_loss_summary = 0, 0, 0, 0
         adversarial_loss = torch.nn.BCELoss()
         criterionQ_con = log_gaussian()
         categorical_loss = torch.nn.CrossEntropyLoss()
@@ -79,7 +70,14 @@ class Trainer(object):
             g_loss = adversarial_loss(prob_fake, label_real)
             cont_loss = criterionQ_con(c_cond, latent_code)
 
-            G_loss = g_loss + cont_loss * 0.05
+            idx_fixed_z, fixed_idx = self._get_fixed_idx(self.config['cr_gap'])
+            idx_fixed_data = model.decoder(idx_fixed_z)
+            cr_logits = model.cr_disc(idx_fixed_data[:self.config['batch_size']],
+                                      idx_fixed_data[self.config['batch_size']:])
+            loss_cr =  categorical_loss(cr_logits, fixed_idx)
+
+
+            G_loss = g_loss + (cont_loss * 0.05) + (self.config['alpha'] * loss_cr)
             G_loss.backward()
 
             g_optimizer.step()
@@ -100,19 +98,20 @@ class Trainer(object):
             D_loss = loss_real + loss
             d_optimizer.step()
 
-            #CR Loss
+            # # CR Loss
             cr_optimizer.zero_grad()
-            idx_fixed_z, fixed_idx = self._get_idx_fixed_z()
+            idx_fixed_z, fixed_idx = self._get_fixed_idx(self.config['cr_gap'])
             idx_fixed_data = model.decoder(idx_fixed_z)
-            cr_logits = model.cr_disc(idx_fixed_data[:self.config['batch_size']], idx_fixed_data[self.config['batch_size']:])
-            loss_cr = self.config['alpha'] * categorical_loss(cr_logits, fixed_idx)
-            loss_cr.backward()
+            cr_logits = model.cr_disc(idx_fixed_data[:self.config['batch_size']],
+                                      idx_fixed_data[self.config['batch_size']:])
+            loss_cr_new = categorical_loss(cr_logits, fixed_idx)
+            loss_cr_new.backward()
             cr_optimizer.step()
 
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
-            cr_loss = cr_loss + loss_cr.item()
+            cr_loss = cr_loss + loss_cr_new.item()
         #
         logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F , CR Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
@@ -122,21 +121,36 @@ class Trainer(object):
         self.train_hist_gan['g_loss'].append(g_loss_summary / len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary / len(self.train_loader))
         self.train_hist_gan['cr_loss'].append(cr_loss / len(self.train_loader))
-        return model, self.train_hist_gan, (d_optimizer, g_optimizer,cr_optimizer)
+        return model, self.train_hist_gan, (d_optimizer, g_optimizer, cr_optimizer)
 
-    def _get_fixed_idx(self):
+    def _get_fixed_idx(self, gap):
+        a, b = -1 + gap / 2, 1 + gap / 2
         idx_fixed = torch.from_numpy(np.array([np.random.randint(0, self.config['latent_dim'])
                                                for i in range(self.config['batch_size'])])).to(self.device)
-        code_fixed = np.array([np.random.rand() for i in range(self.config['batch_size'])])
-        latent_pair_one = self._sample()
-        latent_pair_two = self._sample()
-        for i in range(self.config['batch_size']):
-            latent_pair_one[i][-self.config['latent_dim']+idx_fixed[i]] = code_fixed[i]
-            latent_pair_two[i][-self.config['latent_dim']+idx_fixed[i]] = code_fixed[i]
-        z = torch.cat((latent_pair_one, latent_pair_two), dim=0)
+        c_cond_one = torch.rand(self.config['batch_size'], 1, dtype=torch.float32,
+                                device=self.device) * 2 - 1
+        latent_one = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                                device=self.device) * (b - a) + a
+        latent_two = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                                device=self.device) * (b - a) + a
+        # latent_one[latent_one - latent_two > 0] = latent_one[latent_one - latent_two > 0] + gap / 2
+        # latent_two[latent_one - latent_two > 0] = latent_two[latent_one - latent_two > 0] - gap / 2
+        # latent_one[latent_two - latent_one > 0] = latent_one[latent_two - latent_one > 0] - gap / 2
+        # latent_two[latent_two - latent_one > 0] = latent_two[latent_two - latent_one > 0] + gap / 2
+        for i in range(idx_fixed.shape[0]):
+            latent_one[i][idx_fixed[i]] = c_cond_one[i]
+            latent_two[i][idx_fixed[i]] = c_cond_one[i]
+
+        z_noise_one = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                                 device=self.device) * 2 - 1
+        z_noise_two = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                                 device=self.device) * 2 - 1
+
+        latent_pair_one = torch.cat((z_noise_one, latent_one), dim=1)
+        latent_pair_two = torch.cat((z_noise_two, latent_two), dim=1)
+
+        z = torch.cat((latent_pair_one, latent_pair_two), dim=0).to(self.device)
         return z, idx_fixed
-
-
 
     def train_classifier(self, model, optimizer, epoch):
         running_loss = 0.0
