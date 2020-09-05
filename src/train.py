@@ -54,6 +54,18 @@ class Trainer(object):
 
 
         for iter, images in enumerate(self.train_loader):
+
+            # # CR Loss
+            cr_optimizer.zero_grad()
+            idx_fixed_z, fixed_idx = self._get_fixed_idx(self.config['cr_gap'])
+            idx_fixed_data = model.decoder(idx_fixed_z)
+            cr_logits = model.cr_disc(idx_fixed_data[:self.config['batch_size']].detach(),
+                                      idx_fixed_data[self.config['batch_size']:].detach())
+            loss_cr_new = categorical_loss(cr_logits, fixed_idx)
+            loss_cr_new.backward()
+            cr_optimizer.step()
+
+
             images = images.type(torch.FloatTensor).to(self.device)
             z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
                                  device=self.device) * 2 - 1
@@ -79,7 +91,7 @@ class Trainer(object):
             loss_cr =  categorical_loss(cr_logits, fixed_idx)
 
 
-            G_loss = g_loss + (cont_loss * 0.05) + (self.config['alpha'] * loss_cr)
+            G_loss = g_loss + (cont_loss * 0.05) + (2*loss_cr)
             G_loss.backward()
 
             g_optimizer.step()
@@ -101,15 +113,6 @@ class Trainer(object):
             D_loss = loss_real + loss
             d_optimizer.step()
 
-            # # CR Loss
-            cr_optimizer.zero_grad()
-            idx_fixed_z, fixed_idx = self._get_fixed_idx(self.config['cr_gap'])
-            idx_fixed_data = model.decoder(idx_fixed_z)
-            cr_logits = model.cr_disc(idx_fixed_data[:self.config['batch_size']],
-                                      idx_fixed_data[self.config['batch_size']:])
-            loss_cr_new = categorical_loss(cr_logits, fixed_idx)
-            loss_cr_new.backward()
-            cr_optimizer.step()
 
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
