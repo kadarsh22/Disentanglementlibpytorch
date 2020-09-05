@@ -91,7 +91,7 @@ class Trainer(object):
             loss_cr =  categorical_loss(cr_logits, fixed_idx)
 
 
-            G_loss = g_loss + (cont_loss * 0.05) + (2*loss_cr)
+            G_loss = g_loss + (cont_loss * 0.05) + (loss_cr)
             G_loss.backward()
 
             g_optimizer.step()
