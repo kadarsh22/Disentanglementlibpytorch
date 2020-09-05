@@ -34,9 +34,7 @@ def get_model(config):
                                        lr=config['learning_r_D'], betas=(config['beta1'], config['beta2']))
         g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()}],
                                        lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
-        cr_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()},
-                                     {'params': model.cr_disc.parameters()}
-                                     ],
+        cr_optimizer = torch.optim.Adam([{'params': model.cr_disc.parameters()}],
                                        lr=config['learning_r_CR'], betas=(config['beta1'], config['beta2']))
 
         optimizer = (d_optimizer, g_optimizer,cr_optimizer)

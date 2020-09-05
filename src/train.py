@@ -62,6 +62,8 @@ class Trainer(object):
 
             z = torch.cat((z_noise, c_cond), dim=1)
 
+            ## decoder optimizatiom
+
             g_optimizer.zero_grad()
 
             fake_x = model.decoder(z)
@@ -82,6 +84,7 @@ class Trainer(object):
 
             g_optimizer.step()
 
+            ## encoder optimization
             d_optimizer.zero_grad()
             latent_code, prob_real = model.encoder(images)
             loss_real = adversarial_loss(prob_real, label_real)
