@@ -2,6 +2,7 @@ import time
 import os
 import random
 from utils import *
+import torch.nn.functional as F
 
 # from sklearn.preprocessing import train_test_split
 
@@ -51,22 +52,63 @@ class Trainer(object):
 
         train_loss = 0
         start_time = time.time()
-        optim, loss_optim = optimizer
+        adversarial_loss = torch.nn.BCELoss()
+        label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
+        label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
+
+        enocder_optim, global_loss_optim , local_loss_optim , prior_loss_optim = optimizer
         for images in self.train_loader:
             images = images.to(self.device)
+            enocder_optim.zero_grad()
+            local_loss_optim.zero_grad()
             y, M = model.encoder(images)
             M_prime = torch.cat((M[1:], M[0].unsqueeze(0)), dim=0)
-            loss , encoder_loss= model.loss(y, M, M_prime)
-            train_loss = train_loss +loss.item()
-            loss.backward(retain_graph = True)
-            optim.step()
-            loss_optim.step()
 
-            encoder_loss.backward()
-            optim.step()
+            y_exp = y.unsqueeze(-1).unsqueeze(-1)
+            y_exp = y_exp.expand(-1, -1, 8, 8)
+
+            y_M = torch.cat((M, y_exp), dim=1)
+            y_M_prime = torch.cat((M_prime, y_exp), dim=1)
+
+            Ej = -F.softplus(-model.local_discriminator(y_M)).mean()
+            Em = F.softplus(model.local_discriminator(y_M_prime)).mean()
+            local_loss = (Em - Ej)
+            local_loss.backward()
+            local_loss_optim.step()
+            enocder_optim.step()
+
+            enocder_optim.zero_grad()
+            global_loss_optim.zero_grad()
+
+            Ej = -F.softplus(-model.global_discriminator(y, M)).mean()
+            Em = F.softplus(model.global_discriminator(y, M_prime)).mean()
+            global_loss = (Em - Ej) * 0.5
+            global_loss.backward()
+            global_loss_optim.step()
+            enocder_optim.step()
+
+            prior_loss_optim.zero_grad()
+
+            prior = torch.rand_like(y)
+            prob_real = model.prior_d(prior)
+            loss_real = adversarial_loss(prob_real, label_real)
+            loss_real.backward()
+
+            prob_fake = model.prior_d(y.detach())
+            loss_fake = adversarial_loss(prob_fake , label_fake)
+            loss_fake.backward()
+            prior_loss_optim.step()
+
+            enocder_optim.zero_grad()
+            y, _ = model.encoder(images)
+            loss = adversarial_loss(y, label_real)
+            loss.backward()
+            enocder_optim.step()
+
+
         logging.info("Epochs  %d / %d Time taken %d sec Loss : %.3f " % (
             epoch, self.config['epochs'], time.time() - start_time, train_loss / len(self.train_loader)))
-        return model, (optim,loss_optim)
+        return model, (enocder_optim, global_loss_optim ,local_loss_optim ,prior_loss_optim)
 
 
     def train_gan(self, model, optimizer, epoch):

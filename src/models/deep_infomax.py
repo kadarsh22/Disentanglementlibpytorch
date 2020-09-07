@@ -32,8 +32,9 @@ class InfoMax(nn.Module):
     def __init__(self):
         super().__init__()
         self.encoder = Encoder()
-        self.loss = DeepInfoMaxLoss()
-
+        self.global_discriminator = GlobalDiscriminator().cuda()
+        self.local_discriminator = LocalDiscriminator().cuda()
+        self.prior = PriorDiscriminator().cuda()
 
 
 class GlobalDiscriminator(nn.Module):

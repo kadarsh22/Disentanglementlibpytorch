@@ -45,9 +45,11 @@ def get_model(config):
     elif model_name == 'deepinfomax':
         from deep_infomax import InfoMax
         model = InfoMax()
-        optim = torch.optim.Adam(model.encoder.parameters(), lr=1e-4)
-        loss_optim = torch.optim.Adam(model.loss.parameters(), lr=1e-4)
-        return model , (optim, loss_optim)
+        encoder_optim = torch.optim.Adam(model.encoder.parameters(), lr=1e-4)
+        global_loss_optim = torch.optim.Adam(model.global_discriminator.parameters(), lr=1e-4)
+        local_loss_optim = torch.optim.Adam(model.local_discriminator.parameters(), lr=1e-4)
+        prior_loss_optim = torch.optim.Adam(model.prior.parameters(), lr=1e-4)
+        return model , (encoder_optim, global_loss_optim, local_loss_optim, prior_loss_optim)
 
     elif model_name == 'cnn':
         from classifier import Classifier
