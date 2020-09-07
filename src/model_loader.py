@@ -10,17 +10,20 @@ def get_model(config):
     model_name = config['model_name']
     if model_name == 'beta_vae':
         from beta_vae import VAE
+        loss = None
         model = VAE().to(device)
         optimizer = (torch.optim.Adagrad(model.parameters(), lr=config['learning_r']),)
     elif model_name == 'factor_vae':
         raise NotImplementedError
     elif model_name == 'betavae_cnn':
         from beta_vae_cnn import VAE
+        loss = None
         model = VAE(latent_dim=config['latent_dim']).to(device)
         optimizer = (torch.optim.Adam(model.parameters(), lr=config['learning_r']),)
     elif model_name == 'infogan':
         from infogan import InfoGan
         model = InfoGan(config)
+        loss =None
         model.decoder.apply(weights_init_normal)
         model.encoder.apply(weights_init_normal)
         model.cr_disc.apply(weights_init_normal)
@@ -38,8 +41,17 @@ def get_model(config):
                                        lr=config['learning_r_CR'], betas=(config['beta1'], config['beta2']))
 
         optimizer = (d_optimizer, g_optimizer,cr_optimizer)
+
+    elif model_name == 'deepinfomax':
+        from deep_infomax import InfoMax
+        model = InfoMax()
+        optim = torch.optim.Adam(model.encoder.parameters(), lr=1e-4)
+        loss_optim = torch.optim.Adam(model.loss.parameters(), lr=1e-4)
+        return model , (optim, loss_optim)
+
     elif model_name == 'cnn':
         from classifier import Classifier
         model = Classifier()
         optimizer = torch.optim.Adam(model.parameters(),lr=1e-4)
+        loss = None
     return model, optimizer

@@ -18,15 +18,15 @@ parser.add_argument('--experiment_name', type=str, default=experiment_name)
 parser.add_argument('--experiment_description', type=str, default=experiment_description)
 
 # general configuration
-parser.add_argument('--model_arch', type=str, default='gan', choices=['vae', 'gan', 'deepinfomax'],
+parser.add_argument('--model_arch', type=str, default='infomax', choices=['vae', 'gan', 'infomax'],
                     help='architecture of model')
-parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_vae', 'factor_vae', 'infogan',
-                                                                          'betavae_cnn'], help='architecture of '
+parser.add_argument('--model_name', type=str, default='deepinfomax', choices=['beta_vae', 'factor_vae', 'infogan',
+                                                                          'betavae_cnn','deepinfomax'], help='architecture of '
                                                                                                'model')
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
                                                                         'cars3d'], help='name of the dataset')
 parser.add_argument('--epochs', type=int, default=31, help='The number of epochs to run')
-parser.add_argument('--logging_freq', type=int, default=1, help='Frequency at which result  should be logged')
+parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='whether to run in ablation study mode or not')
@@ -51,6 +51,8 @@ parser.add_argument('--alpha', type=float, default=2, help='regularization stren
 parser.add_argument('--learning_r_CR', type=float, default=0.002, help='learning rate for cr optimizer')
 parser.add_argument('--cr_gap', type=float, default=0, help='learning rate for cr optimizer')
 parser.add_argument('--interval_start', type=float, default=1, help='latent_traversal visualisation range')
+
+# Infomax Configurations
 
 
 # parser.add_argument('--random_seeds', type=list, default=[123,34,134], help='Random seeds to run for ')

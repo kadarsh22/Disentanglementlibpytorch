@@ -2,6 +2,7 @@ import time
 import os
 import random
 from utils import *
+
 # from sklearn.preprocessing import train_test_split
 
 log = logging.getLogger(__name__)
@@ -38,6 +39,35 @@ class Trainer(object):
         self.train_hist_vae['bce_loss'].append(bce_loss / self.config['batch_size'])
         self.train_hist_vae['kld_loss'].append(kld_loss / self.config['batch_size'])
         return model, self.train_hist_vae, (optimizer,)
+
+    def train_deepinfomax(self, model ,optimizer, epoch):
+        """
+            Deep Infomax training
+        :param model: Encoder Model
+        :param optimizer: tuple consisting of loss optimizer
+        :param epoch: epoch
+        :return:
+        """
+
+        train_loss = 0
+        start_time = time.time()
+        optim, loss_optim = optimizer
+        for images in self.train_loader:
+            images = images.to(self.device)
+            y, M = model.encoder(images)
+            M_prime = torch.cat((M[1:], M[0].unsqueeze(0)), dim=0)
+            loss , encoder_loss= model.loss(y, M, M_prime)
+            train_loss = train_loss +loss.item()
+            loss.backward(retain_graph = True)
+            optim.step()
+            loss_optim.step()
+
+            encoder_loss.backward()
+            optim.step()
+        logging.info("Epochs  %d / %d Time taken %d sec Loss : %.3f " % (
+            epoch, self.config['epochs'], time.time() - start_time, train_loss / len(self.train_loader)))
+        return model, (optim,loss_optim)
+
 
     def train_gan(self, model, optimizer, epoch):
         d_optimizer = optimizer[0]

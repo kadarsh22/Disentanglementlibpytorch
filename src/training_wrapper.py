@@ -21,15 +21,9 @@ def run_training_wrapper(configuration, data, perf_logger):
 	visualise_results = Visualiser(configuration)
 	perf_logger.stop_monitoring("Fetching data, models and class instantiations")
 	print_network(model.encoder)
-	print_network(model.decoder)
-	cr_optimizer = optimizer[2]
-	model, optimizer, loss = saver.load_model(model=model, optimizer=optimizer)
-	optimizer_list = list(optimizer)
-	optimizer_list.append(cr_optimizer)
-	optimizer = tuple(optimizer_list)
+	# print_network(model.decoder)
+	# model, optimizer, loss = saver.load_model(model=model, optimizer=optimizer)
 	model.encoder.cuda()
-	model.decoder.cuda()
-	model.cr_disc.cuda()
 	for i in range(configuration['epochs']):
 		if configuration['model_arch'] == 'vae':
 			model.train()
@@ -41,18 +35,20 @@ def run_training_wrapper(configuration, data, perf_logger):
 		elif configuration['model_arch'] == 'cnn':
 			model.train()
 			model, optimizer, loss = model_trainer.train_classifier(model, optimizer, i)
-
+		elif configuration['model_arch'] == 'infomax':
+			model.encoder.train()
+			model , optimizer = model_trainer.train_deepinfomax(model, optimizer, i)
 		if i % configuration['logging_freq'] == 0 and i != 0:
 			if configuration['model_arch'] == 'vae':
 				model.eval()
 			else:
 				model.encoder.eval()
-				model.decoder.eval()
+				# model.decoder.eval()
 			metrics = evaluator.evaluate_model(model, i)
 			z, _ = model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))
-			perf_logger.start_monitoring("Latent Traversal Visualisations")
-			visualise_results.visualise_latent_traversal(z, model.decoder, i)
-			perf_logger.stop_monitoring("Latent Traversal Visualisations")
+			# perf_logger.start_monitoring("Latent Traversal Visualisations")
+			# visualise_results.visualise_latent_traversal(z, model.decoder, i)
+			# perf_logger.stop_monitoring("Latent Traversal Visualisations")
 
 	perf_logger.start_monitoring("Saving Results")
 	saver.save_results(metrics, 'metrics')
