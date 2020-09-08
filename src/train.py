@@ -69,7 +69,6 @@ class Trainer(object):
 
             y_M = torch.cat((M, y_exp), dim=1)
             y_M_prime = torch.cat((M_prime, y_exp), dim=1)
-
             Ej = -F.softplus(-model.local_discriminator(y_M)).mean()
             Em = F.softplus(model.local_discriminator(y_M_prime)).mean()
             local_loss = (Em - Ej)
@@ -80,6 +79,8 @@ class Trainer(object):
             enocder_optim.zero_grad()
             global_loss_optim.zero_grad()
 
+            y, M = model.encoder(images)
+            M_prime = torch.cat((M[1:], M[0].unsqueeze(0)), dim=0)
             Ej = -F.softplus(-model.global_discriminator(y, M)).mean()
             Em = F.softplus(model.global_discriminator(y, M_prime)).mean()
             global_loss = (Em - Ej) * 0.5
@@ -90,18 +91,19 @@ class Trainer(object):
             prior_loss_optim.zero_grad()
 
             prior = torch.rand_like(y)
-            prob_real = model.prior_d(prior)
+            prob_real = model.prior(prior)
             loss_real = adversarial_loss(prob_real, label_real)
             loss_real.backward()
 
-            prob_fake = model.prior_d(y.detach())
+            prob_fake = model.prior(y.detach())
             loss_fake = adversarial_loss(prob_fake , label_fake)
             loss_fake.backward()
             prior_loss_optim.step()
 
             enocder_optim.zero_grad()
             y, _ = model.encoder(images)
-            loss = adversarial_loss(y, label_real)
+            label = model.prior(y)
+            loss = adversarial_loss(label, label_real.view(-1,1))
             loss.backward()
             enocder_optim.step()
 
