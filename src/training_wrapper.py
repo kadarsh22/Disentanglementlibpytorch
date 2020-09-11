@@ -43,7 +43,7 @@ def run_training_wrapper(configuration, data, perf_logger):
 				model.eval()
 			else:
 				model.encoder.eval()
-				saver.save_model(model, optimizer,loss)
+				saver.save_model(model, optimizer,loss,epoch=i)
 				# model.decoder.eval()
 			metrics = evaluator.evaluate_model(model, i)
 			z, _ = model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))
