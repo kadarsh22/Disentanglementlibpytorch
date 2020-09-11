@@ -32,7 +32,18 @@ class Saver(object):
 				'loss': loss
 			}, os.path.join(models_dir, str(epoch) + '_gan.pkl'))
 		else:
-			raise NotImplementedError
+			torch.save({
+				'epoch': epoch,
+				'model_state_dict': model.encoder.state_dict(),
+				'model_global_dict': model.global_discriminator.state_dict(),
+				'model_local_dict': model.local_discriminator.state_dict(),
+				'model_prior_dict': model.prior.state_dict(),
+				'encoder_optimizer_state_dict': optimizer[0].state_dict(),
+				'global_optimizer_state_dict' : optimizer[1].state_dict(),
+				'local_optimizer_state_dict': optimizer[2].state_dict(),
+				'prior_optimizer_state_dict': optimizer[3].state_dict(),
+				'loss': loss
+			}, os.path.join(models_dir, str(epoch) + '_infomax.pkl'))
 
 	def load_model(self, model, optimizer):
 		models_dir = os.path.dirname(os.getcwd()) + f'/pretrained_models/{self.model_name}'  # project root

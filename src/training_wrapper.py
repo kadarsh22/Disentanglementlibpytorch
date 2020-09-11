@@ -37,12 +37,13 @@ def run_training_wrapper(configuration, data, perf_logger):
 			model, optimizer, loss = model_trainer.train_classifier(model, optimizer, i)
 		elif configuration['model_arch'] == 'infomax':
 			model.encoder.train()
-			model , optimizer = model_trainer.train_deepinfomax(model, optimizer, i)
+			model , loss, optimizer  = model_trainer.train_deepinfomax(model, optimizer, i)
 		if i % configuration['logging_freq'] == 0 and i != 0:
 			if configuration['model_arch'] == 'vae':
 				model.eval()
 			else:
 				model.encoder.eval()
+				saver.save_model(model, optimizer,loss)
 				# model.decoder.eval()
 			metrics = evaluator.evaluate_model(model, i)
 			z, _ = model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))

@@ -25,7 +25,7 @@ parser.add_argument('--model_name', type=str, default='deepinfomax', choices=['b
                                                                                                'model')
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
                                                                         'cars3d'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=31, help='The number of epochs to run')
+parser.add_argument('--epochs', type=int, default=51, help='The number of epochs to run')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
@@ -53,7 +53,9 @@ parser.add_argument('--cr_gap', type=float, default=0, help='learning rate for c
 parser.add_argument('--interval_start', type=float, default=1, help='latent_traversal visualisation range')
 
 # Infomax Configurations
-
+parser.add_argument('--global_coeff', type=int, default=0.5, help='coefficent of global feature for infomax')
+parser.add_argument('--local_coeff', type=int, default=1, help='coefficent of local feature for infomax')
+parser.add_argument('--prior_coeff', type=int, default=0.1, help='coefficent of prior for infomax')
 
 # parser.add_argument('--random_seeds', type=list, default=[123,34,134], help='Random seeds to run for ')
 # parser.add_argument('--latent_dims', type=list, default=[5,10], help='Number of latent units ')

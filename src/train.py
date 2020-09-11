@@ -20,6 +20,7 @@ class Trainer(object):
         # self.train_loader , self.test_loader = self._get_classifier_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': [],'cr_loss':[]}
+        self.train_hist_infomax = {'global_loss': [], 'local_loss': [], 'prior_loss': []}
 
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
@@ -55,6 +56,7 @@ class Trainer(object):
         adversarial_loss = torch.nn.BCELoss()
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
+        global_loss_summary , local_loss_summary , prior_loss_summary ,loss_total_summary = 0 ,0, 0 ,0
 
         enocder_optim, global_loss_optim , local_loss_optim , prior_loss_optim = optimizer
         for images in self.train_loader:
@@ -71,11 +73,11 @@ class Trainer(object):
             y_M_prime = torch.cat((M_prime, y_exp), dim=1)
             Ej = -F.softplus(-model.local_discriminator(y_M)).mean()
             Em = F.softplus(model.local_discriminator(y_M_prime)).mean()
-            local_loss = (Em - Ej)
+            local_loss = (Em - Ej)*self.config["local_coeff"]
             local_loss.backward()
             local_loss_optim.step()
             enocder_optim.step()
-
+            local_loss_summary = local_loss_summary  + local_loss.item()
             enocder_optim.zero_grad()
             global_loss_optim.zero_grad()
 
@@ -83,8 +85,9 @@ class Trainer(object):
             M_prime = torch.cat((M[1:], M[0].unsqueeze(0)), dim=0)
             Ej = -F.softplus(-model.global_discriminator(y, M)).mean()
             Em = F.softplus(model.global_discriminator(y, M_prime)).mean()
-            global_loss = (Em - Ej) * 0.5
+            global_loss = (Em - Ej) * self.config["global_coeff"]
             global_loss.backward()
+            global_loss_summary = global_loss_summary + global_loss.item()
             global_loss_optim.step()
             enocder_optim.step()
 
@@ -104,13 +107,19 @@ class Trainer(object):
             y, _ = model.encoder(images)
             label = model.prior(y)
             loss = adversarial_loss(label, label_real.view(-1,1))
+            prior_loss_summary = prior_loss_summary + loss.item()
             loss.backward()
             enocder_optim.step()
+            loss_total_summary = global_loss.item() + local_loss.item() + loss.item()
 
 
-        logging.info("Epochs  %d / %d Time taken %d sec Loss : %.3f " % (
-            epoch, self.config['epochs'], time.time() - start_time, train_loss / len(self.train_loader)))
-        return model, (enocder_optim, global_loss_optim ,local_loss_optim ,prior_loss_optim)
+        logging.info("Epochs  %d / %d Time taken %d sec Global Loss : %.3f Local Loss : %.3f Prior Loss : %.3f Total Loss : %.3f" % (
+            epoch, self.config['epochs'], time.time() - start_time, global_loss_summary / len(self.train_loader) , local_loss_summary/len(self.train_loader),
+        prior_loss_summary/len(self.train_loader) , loss_total_summary/len(self.train_loader)))
+        self.train_hist_infomax['global_loss'].append(global_loss_summary / len(self.train_loader))
+        self.train_hist_infomax['local_loss'].append(local_loss_summary / len(self.train_loader))
+        self.train_hist_infomax['prior_loss'].append(prior_loss_summary/ len(self.train_loader))
+        return model, self.train_hist_infomax ,(enocder_optim, global_loss_optim ,local_loss_optim ,prior_loss_optim)
 
 
     def train_gan(self, model, optimizer, epoch):
