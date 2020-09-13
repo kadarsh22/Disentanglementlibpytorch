@@ -106,7 +106,7 @@ class Trainer(object):
             enocder_optim.zero_grad()
             y, _ = model.encoder(images)
             label = model.prior(y)
-            loss = adversarial_loss(label, label_real.view(-1,1))
+            loss = adversarial_loss(label, label_real.view(-1,1))*self.config["prior_coeff"]
             prior_loss_summary = prior_loss_summary + loss.item()
             loss.backward()
             enocder_optim.step()

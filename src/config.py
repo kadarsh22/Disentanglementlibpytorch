@@ -53,9 +53,9 @@ parser.add_argument('--cr_gap', type=float, default=0, help='learning rate for c
 parser.add_argument('--interval_start', type=float, default=1, help='latent_traversal visualisation range')
 
 # Infomax Configurations
-parser.add_argument('--global_coeff', type=int, default=0.5, help='coefficent of global feature for infomax')
+parser.add_argument('--global_coeff', type=int, default=1, help='coefficent of global feature for infomax')
 parser.add_argument('--local_coeff', type=int, default=1, help='coefficent of local feature for infomax')
-parser.add_argument('--prior_coeff', type=int, default=0.1, help='coefficent of prior for infomax')
+parser.add_argument('--prior_coeff', type=int, default=2, help='coefficent of prior for infomax')
 
 # parser.add_argument('--random_seeds', type=list, default=[123,34,134], help='Random seeds to run for ')
 # parser.add_argument('--latent_dims', type=list, default=[5,10], help='Number of latent units ')
