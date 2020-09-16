@@ -110,7 +110,7 @@ class Trainer(object):
             prior_loss_summary = prior_loss_summary + loss.item()
             loss.backward()
             enocder_optim.step()
-            loss_total_summary = global_loss.item() + local_loss.item() + loss.item()
+            loss_total_summary = loss_total_summary + global_loss.item() + local_loss.item() + loss.item()
 
 
         logging.info("Epochs  %d / %d Time taken %d sec Global Loss : %.3f Local Loss : %.3f Prior Loss : %.3f Total Loss : %.3f" % (
