@@ -51,6 +51,12 @@ class DSprites(object):
 		latents_sampled = self.latents_values[indices_sampled]
 		return latents_sampled, imgs_sampled
 
+	def sample_(self, latents_sampled):
+		indices_sampled = self.latent_to_index(latents_sampled)
+		imgs_sampled = self.images[indices_sampled]
+		latents_sampled = self.latents_values[indices_sampled]
+		return latents_sampled, imgs_sampled
+
 	def sample_latent(self, size=1):
 		"""
 		Generate a vector with size of ground truth factors and random fill each column with values from range

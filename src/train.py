@@ -2,7 +2,7 @@ import time
 import os
 import random
 from utils import *
-
+from sklearn.model_selection import train_test_split
 log = logging.getLogger(__name__)
 
 class Trainer(object):
@@ -12,7 +12,8 @@ class Trainer(object):
         self.data = dsprites
         self.config = config
         self.device = torch.device('cuda:' + str(config['device_id']))
-        self.train_loader = self._get_training_data()
+        # self.train_loader = self._get_training_data()
+        self.train_loader  = self._get_classifier_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
 
@@ -99,6 +100,33 @@ class Trainer(object):
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
         return model,self.train_hist_gan, (d_optimizer, g_optimizer)
 
+    def train_classifier(self, model, optimizer, epoch):
+        running_loss = 0.0
+        model.to(self.device)
+        criterion = torch.nn.MSELoss()
+        for i, data in enumerate(self.train_loader, 0):
+            loss = 0
+            inputs, labels ,idx = data
+            inputs = inputs.cuda()
+            labels = labels.cuda()
+
+            # zero the parameter gradients
+            optimizer.zero_grad()
+
+            # forward + backward + optimize
+            outputs ,_ = model(inputs)
+            for i,output,true in zip(idx,outputs,labels):
+                loss = loss + criterion(output[i],true[i])
+            loss.backward()
+            optimizer.step()
+
+            # print statistics
+            running_loss += loss.item()
+            print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 2000))
+            running_loss = 0.0
+
+        return model, optimizer, epoch
+
     @staticmethod
     def set_seed(seed):
         torch.manual_seed(seed)
@@ -112,4 +140,14 @@ class Trainer(object):
     def _get_training_data(self):
         images = self.data.images
         train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
+        return train_loader
+
+    def _get_classifier_training_data(self):
+        index = [x for x in range(32)]  + [0] + [x for x in range(32,32*32,32)]  + [0] + \
+                [x for x in range(32*32+1,40*32*32+1,32*32)] + [0] + [x for x in range(40*32*32+1,6*40*32*32+1,40*32*32)] + [0] + [x for x in range(6*40*32*32+1,3*6*40*32*32+1,6*40*32*32)]
+        latent_idx = [4 for x in range(32)] + [3 for x in range(32)] + [2 for x in range(40)] + [1 for x in range(6)] +[0 for x in range(3)]
+        training_labels , training_images = self.data.sample_(self.data.latents_classes[index])
+        normalised_labels = training_labels[:,1:] -self.data.latents_values.mean(axis =0)[1:]
+        train_dataset = NewDataset(torch.from_numpy(training_images),torch.from_numpy(normalised_labels).type(torch.FloatTensor),torch.LongTensor(latent_idx))
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.config['batch_size'], shuffle=True,drop_last=False)
         return train_loader
