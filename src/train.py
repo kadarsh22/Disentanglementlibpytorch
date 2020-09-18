@@ -147,7 +147,7 @@ class Trainer(object):
                 [x for x in range(32*32+1,40*32*32+1,32*32)] + [0] + [x for x in range(40*32*32+1,6*40*32*32+1,40*32*32)] + [0] + [x for x in range(6*40*32*32+1,3*6*40*32*32+1,6*40*32*32)]
         latent_idx = [4 for x in range(32)] + [3 for x in range(32)] + [2 for x in range(40)] + [1 for x in range(6)] +[0 for x in range(3)]
         training_labels , training_images = self.data.sample_(self.data.latents_classes[index])
-        normalised_labels = training_labels[:,1:] -self.data.latents_values.mean(axis =0)[1:]
+        normalised_labels = (training_labels[:,1:]/training_labels.max(axis=0)[1:])*2-1
         train_dataset = NewDataset(torch.from_numpy(training_images),torch.from_numpy(normalised_labels).type(torch.FloatTensor),torch.LongTensor(latent_idx))
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.config['batch_size'], shuffle=True,drop_last=False)
         return train_loader

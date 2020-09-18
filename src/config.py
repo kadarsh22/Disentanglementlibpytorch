@@ -25,7 +25,7 @@ parser.add_argument('--model_name', type=str, default='cnn', choices=['beta_vae'
                                                                                                'model')
 parser.add_argument('--dataset', type=str, default='dsprites', choices=['celeba', 'noisydsprites', 'coloredsprites',
                                                                         'cars3d'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=300, help='The number of epochs to run')
+parser.add_argument('--epochs', type=int, default=50, help='The number of epochs to run')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
