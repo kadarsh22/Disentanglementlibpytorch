@@ -130,7 +130,7 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 class Classifier(nn.Module):
-    def __init__(self, output_dim=40):
+    def __init__(self, output_dim=5):
         super(Classifier, self).__init__()
 
         self.latent_dim = output_dim
