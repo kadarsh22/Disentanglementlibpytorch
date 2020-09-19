@@ -114,7 +114,7 @@ class Trainer(object):
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs ,_ = model(inputs)
+            outputs  = model(inputs)
             for i,output,true in zip(idx,outputs,labels):
                 loss = loss + criterion(output[i],true[i])
             loss.backward()
