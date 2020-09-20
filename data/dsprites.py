@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torchvision
 import os
+import random
 import matplotlib.pyplot as plt
 
 SCREAM_PATH = "/home/adarsh/Documents/data/scream/scream.jpg"
@@ -84,3 +85,31 @@ class DSprites(object):
 		# imgs_sampled = self.images[indices_sampled]
 		latent_values = self.latents_values[indices_sampled]
 		return latent_values
+
+	def sample_oracle_training_data(self, num_training_samples):
+
+		latent_reference = self.sample_latent(size=num_training_samples)
+		latent_template = np.copy(latent_reference)
+		labels_array = np.zeros((num_training_samples,5))
+		for i in range(1,6):
+			latent_unit =  latent_reference[:,i]
+			change_index = random.sample(range(num_training_samples), int(num_training_samples/2))
+			replace_list = []
+			for current_value in latent_unit[change_index]:
+				if i == 1: ##shape
+					replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) +1, 3)))
+				if i == 2: # size
+					replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) +1, 6)))
+				if i == 3: # orientation
+					replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) +1, 40)))
+				if i == 4: # xposition
+					replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) +1, 32)))
+				if i == 5: # yposition
+					replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) +1, 32)))
+				replace_list.append(replace_value)
+			latent_template[change_index, i] = np.array(replace_list)
+			labels_array[:,i-1] = (latent_reference[:,i] == latent_template[:,i])*1
+		ref_imgs = self.sample_images_from_latent(latent_reference)
+		template_images = self.sample_images_from_latent(latent_template)
+		training_images = torch.cat((torch.from_numpy(ref_imgs).view(-1,1,64,64),torch.from_numpy(template_images).view(-1,1,64,64)),dim=1)
+		return training_images , torch.FloatTensor(labels_array)

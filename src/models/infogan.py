@@ -134,7 +134,7 @@ class Classifier(nn.Module):
         super(Classifier, self).__init__()
 
         self.latent_dim = output_dim
-        self.nc = 1
+        self.nc = 2
 
         self.cnn1_en = nn.Conv2d(self.nc, 32, 4, 2, 1)
         self.cnn2_en = nn.Conv2d(32, 32, 4, 2, 1)

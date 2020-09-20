@@ -30,18 +30,17 @@ def truncated_normal_(tensor, mean=0, std=1.0):
 
 
 class NewDataset(Dataset):
-    def __init__(self, images, labels,idx, transform=None):
+    def __init__(self, images, labels, transform=None):
         self.images = images
         self.labels = labels
-        self.idx = idx
         self.transform = transform
 
     def __getitem__(self, index):
-        img, target ,idx = self.images[index].clone(), self.labels[index].clone() ,self.idx[index].clone()
+        img, target = self.images[index].clone(), self.labels[index].clone()
 
         if self.transform is not None:
             img = self.transform(img)
-        return img, target ,idx
+        return img, target
 
     def __len__(self):
         return len(self.labels)

@@ -13,7 +13,9 @@ class Trainer(object):
         self.config = config
         self.device = torch.device('cuda:' + str(config['device_id']))
         # self.train_loader = self._get_training_data()
-        self.train_loader  = self._get_classifier_training_data()
+        # self.train_loader  = self._get_classifier_training_data()
+        self.train_loader = self._get_oracle_training_data(70000)
+        self.test_loader = self._get_oracle_training_data(10000)
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
 
@@ -103,29 +105,30 @@ class Trainer(object):
     def train_classifier(self, model, optimizer, epoch):
         running_loss = 0.0
         model.to(self.device)
-        criterion = torch.nn.MSELoss()
+        criterion = torch.nn.BCEWithLogitsLoss()
         for i, data in enumerate(self.train_loader, 0):
-            loss = 0
-            inputs, labels ,idx = data
+            inputs, labels  = data
             inputs = inputs.cuda()
             labels = labels.cuda()
 
-            # zero the parameter gradients
             optimizer.zero_grad()
-
-            # forward + backward + optimize
             outputs  = model(inputs)
-            for i,output,true in zip(idx,outputs,labels):
-                loss = loss + criterion(output[i],true[i])
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-
-            # print statistics
             running_loss += loss.item()
-            print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 2000))
-            running_loss = 0.0
+        correct = 0
+        total = 0
+        for data ,labels in self.test_loader:
+            output = model(data)
+            correct += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda()).sum()
+            total = total + data.size(0)
+        accuracy = 100 *( correct.item() / (total*5))
+        print('Iteration: {}. Loss: {}. Accuracy: {}'.format(epoch, running_loss/(len(self.train_loader)), accuracy))
 
         return model, optimizer, epoch
+
+
 
     @staticmethod
     def set_seed(seed):
@@ -140,6 +143,12 @@ class Trainer(object):
     def _get_training_data(self):
         images = self.data.images
         train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
+        return train_loader
+
+    def _get_oracle_training_data(self,size):
+        images , labels = self.data.sample_oracle_training_data(size)
+        train_dataset = NewDataset(images,labels)
+        train_loader = torch.utils.data.DataLoader(train_dataset , batch_size=self.config['batch_size'], shuffle=True)
         return train_loader
 
     def _get_classifier_training_data(self):
