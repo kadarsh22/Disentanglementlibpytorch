@@ -33,5 +33,10 @@ def get_model(config):
         g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()}],
                                        lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
         optimizer = (d_optimizer, g_optimizer)
-
+    elif model_name == 'cnn':
+        from infogan import Classifier
+        model = Classifier() ## initialising weiht of exisitng discriminator had negative effect commpeting objectives
+        # weight = torch.load('../pretrained_models/model.pth')
+        # model.load_state_dict(weight)
+        optimizer = torch.optim.Adam(model.parameters(),lr=1e-4)
     return model, optimizer

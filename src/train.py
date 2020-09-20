@@ -12,7 +12,8 @@ class Trainer(object):
         self.data = dsprites
         self.config = config
         self.device = torch.device('cuda:' + str(config['device_id']))
-        self.train_loader = self._get_training_data()
+        self.train_loader = self._get_oracle_training_data(20000)
+        self.test_loader = self._get_oracle_training_data(1000)
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
 
@@ -99,6 +100,32 @@ class Trainer(object):
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
         return model,self.train_hist_gan, (d_optimizer, g_optimizer)
 
+    def train_classifier(self, model, optimizer, epoch):
+        running_loss = 0.0
+        model.to(self.device)
+        criterion = torch.nn.BCEWithLogitsLoss()
+        for i, data in enumerate(self.train_loader, 0):
+            inputs, labels  = data
+            inputs = inputs.cuda()
+            labels = labels.cuda()
+
+            optimizer.zero_grad()
+            outputs  = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        correct = 0
+        total = 0
+        for data ,labels in self.test_loader:
+            output = model(data)
+            correct += ((torch.nn.functional.sigmoid(output) > 0.5).float()== labels.cuda())[:,0].sum()
+            total = total + data.size(0)
+        accuracy = 100 *( correct.item() / (total))
+        print('Iteration: {}. Loss: {}. Accuracy: {}'.format(epoch, running_loss/(len(self.train_loader)), accuracy))
+
+        return model, optimizer, epoch
+
     @staticmethod
     def set_seed(seed):
         torch.manual_seed(seed)
@@ -108,6 +135,12 @@ class Trainer(object):
         np.random.seed(seed)
         random.seed(seed)
         os.environ['PYTHONHASHSEED'] = str(seed)
+
+    def _get_oracle_training_data(self,size):
+        images , labels = self.data.sample_oracle_training_data(size)
+        dataset = NewDataset(images,labels)
+        train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.config['batch_size'], shuffle=True)
+        return train_loader
 
     def _get_training_data(self):
         images = self.data.images
