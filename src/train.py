@@ -115,14 +115,23 @@ class Trainer(object):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
-        correct = 0
+        correct_shape = 0
+        correct_size = 0
+        correct_orientation = 0
+        correct_xpos = 0
+        correct_ypos = 0
         total = 0
         for data ,labels in self.test_loader:
             output = model(data)
-            correct += ((torch.nn.functional.sigmoid(output) > 0.5).float()== labels.cuda())[:,0].sum()
+            correct_shape += ((torch.nn.functional.sigmoid(output) > 0.5).float()== labels.cuda())[:,0].sum()
+            correct_size += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda())[:, 1].sum()
+            correct_orientation += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda())[:, 2].sum()
+            correct_xpos += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda())[:, 3].sum()
+            correct_ypos += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda())[:, 4].sum()
             total = total + data.size(0)
-        accuracy = 100 *( correct.item() / (total))
-        print('Iteration: {}. Loss: {}. Accuracy: {}'.format(epoch, running_loss/(len(self.train_loader)), accuracy))
+        print('Accuracy of the network on the 10000 test images: %d %% , %d %%, %d %%,%d %%,%d %%' % (
+            100 * correct_shape.item() / total, 100 * correct_size.item() / total, 100 * correct_orientation.item() / total,
+            100 * correct_xpos.item() / total, 100 * correct_ypos.item() / total))
 
         return model, optimizer, epoch
 
