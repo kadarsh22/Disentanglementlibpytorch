@@ -134,7 +134,7 @@ class Classifier(nn.Module):
         super(Classifier, self).__init__()
 
         self.latent_dim = output_dim
-        self.nc = 6
+        self.nc = 1
 
         self.cnn1_en = nn.Conv2d(self.nc, 32, 4, 2, 1)
         self.cnn2_en = nn.Conv2d(32, 32, 4, 2, 1)
@@ -157,9 +157,11 @@ class Classifier(nn.Module):
         z_parameters = self.z_mean(out)
         return z_parameters
 
-    def forward(self, x):
-        z_mean = self.encoder(x)
-        return z_mean
+    def forward(self, positive,negative,query):
+        pos = self.encoder(positive)
+        neg = self.encoder(negative)
+        que = self.encoder(query)
+        return pos ,neg , que
 
 
 class InfoGan(object):
@@ -168,6 +170,7 @@ class InfoGan(object):
 
         self.decoder = Generator(dim_z=config['noise_dim'], dim_c_cont=config['latent_dim'])
         self.encoder = Discriminator(dim_c_cont=config['latent_dim'])
+        self.oracle = Classifier()
 
     def dummy(self):
         print('This is a dummy function')

@@ -20,6 +20,8 @@ def get_model(config):
     elif model_name == 'infogan':
         from infogan import InfoGan
         model = InfoGan(config)
+        weight = torch.load('../pretrained_models/model_orient.pth')
+        model.oracle.load_state_dict(weight)
         model.decoder.apply(weights_init_normal)
         model.encoder.apply(weights_init_normal)
         d_optimizer = torch.optim.Adam([{'params': model.encoder.conv1.parameters()},

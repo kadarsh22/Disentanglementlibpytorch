@@ -2,7 +2,8 @@ import time
 import os
 import random
 from utils import *
-
+import numpy
+from sklearn.model_selection import train_test_split
 log = logging.getLogger(__name__)
 
 class Trainer(object):
@@ -12,8 +13,7 @@ class Trainer(object):
         self.data = dsprites
         self.config = config
         self.device = torch.device('cuda:' + str(config['device_id']))
-        self.train_loader = self._get_oracle_training_data(20000)
-        self.test_loader = self._get_oracle_training_data(1000)
+        self.train_loader = self._get_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
 
@@ -41,12 +41,14 @@ class Trainer(object):
         d_optimizer = optimizer[0]
         g_optimizer = optimizer[1]
         start_time = time.time()
-        d_loss_summary, g_loss_summary, info_loss_summary = 0, 0, 0
+        d_loss_summary, g_loss_summary, info_loss_summary ,oracle_loss_summary = 0, 0, 0 , 0
         model.encoder.to(self.device)
         model.decoder.to(self.device)
+        model.oracle.to(self.device)
 
         adversarial_loss = torch.nn.BCELoss()
         criterionQ_con = log_gaussian()
+        similarity_loss = torch.nn.TripletMarginLoss()
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
@@ -59,15 +61,19 @@ class Trainer(object):
 
             z = torch.cat((z_noise, c_cond), dim=1)
 
+            positive_samples ,negative_samples = self.get_sample_pairs(c_cond)
+
             g_optimizer.zero_grad()
 
             fake_x = model.decoder(z)
             latent_code, prob_fake = model.encoder(fake_x)
+            pos, neg, que = model.oracle(positive_samples ,negative_samples , fake_x)
 
             g_loss = adversarial_loss(prob_fake, label_real)
             cont_loss = criterionQ_con(c_cond, latent_code)
+            oracle_loss = similarity_loss(que, pos, neg)
 
-            G_loss = g_loss + cont_loss * 0.05
+            G_loss = g_loss + cont_loss * 0.05 + oracle_loss
             G_loss.backward()
 
             g_optimizer.step()
@@ -91,10 +97,11 @@ class Trainer(object):
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
+            oracle_loss_summary = oracle_loss_summary + oracle_loss.item()
         #
-        logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F" % (
+        logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F Oracle_Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
-            g_loss / len(self.train_loader), d_loss_summary / len(self.train_loader)))
+            g_loss_summary / len(self.train_loader), d_loss_summary / len(self.train_loader), info_loss_summary / len(self.train_loader) ,oracle_loss_summary / len(self.train_loader)))
         self.train_hist_gan['d_loss'].append(d_loss_summary/ len(self.train_loader))
         self.train_hist_gan['g_loss'].append(g_loss_summary/ len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
@@ -103,35 +110,36 @@ class Trainer(object):
     def train_classifier(self, model, optimizer, epoch):
         running_loss = 0.0
         model.to(self.device)
-        criterion = torch.nn.BCEWithLogitsLoss()
+        criterion = torch.nn.TripletMarginLoss()
         for i, data in enumerate(self.train_loader, 0):
-            inputs, labels  = data
-            inputs = inputs.cuda()
-            labels = labels.cuda()
+            positive ,negative ,query  = data
+            positive = positive.cuda()
+            negative = negative.cuda()
+            query = query.cuda()
 
             optimizer.zero_grad()
-            outputs  = model(inputs)
-            loss = criterion(outputs, labels)
+            pos ,neg ,que  = model(positive ,negative ,query)
+            loss = criterion(que, pos, neg)
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
-        correct_shape = 0
-        correct_size = 0
-        correct_orientation = 0
-        correct_xpos = 0
-        correct_ypos = 0
+
+        correct = 0
         total = 0
-        for data ,labels in self.test_loader:
-            output = model(data)
-            correct_shape += ((torch.nn.functional.sigmoid(output) > 0.5).float()== labels.cuda())[:,0].sum()
-            correct_size += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda())[:, 1].sum()
-            correct_orientation += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda())[:, 2].sum()
-            correct_xpos += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda())[:, 3].sum()
-            correct_ypos += ((torch.nn.functional.sigmoid(output) > 0.5).float() == labels.cuda())[:, 4].sum()
-            total = total + data.size(0)
-        print('Accuracy of the network on the 10000 test images: %d %% , %d %%, %d %%,%d %%,%d %%' % (
-            100 * correct_shape.item() / total, 100 * correct_size.item() / total, 100 * correct_orientation.item() / total,
-            100 * correct_xpos.item() / total, 100 * correct_ypos.item() / total))
+        for data  in self.test_loader:
+            pdist = torch.nn.PairwiseDistance(p=2)
+            positive, negative, query = data
+            positive = positive.cuda()
+            negative = negative.cuda()
+            query = query.cuda()
+            pos , neg ,query = model(positive ,negative ,query)
+            dist_post = pdist(pos , query)
+            dist_neg = pdist(neg,query)
+            predicted = dist_post < dist_neg
+            correct = correct + predicted.sum().item()
+
+            total = total + query.size(0)
+        print('Accuracy of the network on the 10000 test images: %d %% ' % ( 100 * correct / total))
 
         return model, optimizer, epoch
 
@@ -145,13 +153,21 @@ class Trainer(object):
         random.seed(seed)
         os.environ['PYTHONHASHSEED'] = str(seed)
 
-    def _get_oracle_training_data(self,size):
-        images , labels = self.data.sample_oracle_training_data(size)
-        dataset = NewDataset(images,labels)
-        train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.config['batch_size'], shuffle=True)
-        return train_loader
-
     def _get_training_data(self):
         images = self.data.images
         train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
         return train_loader
+
+
+    def get_sample_pairs(self , c_cond):
+        bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40) ])
+        latent = np.digitize(c_cond[:,3].cpu(),bins)
+        latent =  [x - 1 for x in latent.tolist()]
+        orientation_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32 * 32 + 1, 40 * 32 * 32 + 1, 32 * 32)]]))
+        replace_list = []
+        for current_value in c_cond[:,3].tolist():
+            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 40)))
+            replace_list.append(replace_value)
+        negative_samples = torch.stack([orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
+        positive_samples = torch.stack([orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
+        return positive_samples ,negative_samples
