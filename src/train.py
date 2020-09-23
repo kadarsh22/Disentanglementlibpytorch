@@ -40,7 +40,7 @@ class Trainer(object):
         d_optimizer = optimizer[0]
         g_optimizer = optimizer[1]
         start_time = time.time()
-        d_loss_summary, g_loss_summary, info_loss_summary = 0, 0, 0
+        d_loss_summary, g_loss_summary, info_loss_summary ,oracle_loss_summary = 0, 0, 0 , 0
         model.encoder.to(self.device)
         model.decoder.to(self.device)
 
@@ -91,9 +91,9 @@ class Trainer(object):
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
         #
-        logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F" % (
+        logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F F" % (
             epoch, self.config['epochs'], time.time() - start_time,
-            g_loss / len(self.train_loader), d_loss_summary / len(self.train_loader)))
+            g_loss_summary / len(self.train_loader), d_loss_summary / len(self.train_loader), info_loss_summary / len(self.train_loader)))
         self.train_hist_gan['d_loss'].append(d_loss_summary/ len(self.train_loader))
         self.train_hist_gan['g_loss'].append(g_loss_summary/ len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
