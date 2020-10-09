@@ -22,6 +22,12 @@ class Trainer(object):
         self.xpos_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32, 32 * 32, 32)]]))
         self.ypos_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[x for x in range(32)]]))
 
+        self.shape_bins = np.array([-1] + [-1 + 2*x/3 for x in range(1,3)] +[1])
+        self.size_bins = np.array([-1] + [-1 + 2*x/6 for x in range(1,6)] + [1])
+        self.orientation_bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40)] + [1])
+        self.xpos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32) ] + [1])
+        self.ypos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32)] + [1])
+
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
         bce_loss, kld_loss, total_loss = 0, 0, 0
@@ -66,9 +72,8 @@ class Trainer(object):
             z = torch.cat((z_noise, c_cond), dim=1)
 
             # # CR Loss
-
-
-            # positive_shape_samples ,negative_shape_samples = self.get_sample_oracle_shape_pairs(c_cond)
+            # positive_
+            # shape_samples ,negative_shape_samples = self.get_sample_oracle_shape_pairs(c_cond)
             positive_size_samples ,negative_size_samples = self.get_sample_oracle_size_pairs(c_cond)
             positive_orient_samples ,negative_orient_samples = self.get_sample_oracle_orient_pairs(c_cond)
             positive_xpos_samples ,negative_xpos_samples = self.get_sample_oracle_xpos_pairs(c_cond)
@@ -223,8 +228,7 @@ class Trainer(object):
         # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
         #                     device=self.device) * 2 - 1
         # c_cond_similar = torch.cat((shape_factor.view(-1,1), c_cond_new),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/3 for x in range(1,3)] +[1])
-        latent = np.digitize(c_cond[:,0].cpu(),bins)
+        latent = np.digitize(c_cond[:,0].cpu(),self.shape_bins)
         latent =  [x - 1 for x in latent.tolist()]
         replace_list = []
         for current_value in latent:
@@ -241,8 +245,7 @@ class Trainer(object):
         # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
         #                     device=self.device) * 2 - 1
         # c_cond_similar = torch.cat((c_cond_new[:,:1], size_factor.view(-1,1), c_cond_new[:,1:]),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/6 for x in range(1,6)] + [1])
-        latent = np.digitize(c_cond[:,1].cpu(),bins)
+        latent = np.digitize(c_cond[:,1].cpu(),self.size_bins)
         latent =  [x - 1 for x in latent.tolist()]
 
         replace_list = []
@@ -260,8 +263,7 @@ class Trainer(object):
         # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
         #                     device=self.device) * 2 - 1
         # c_cond_similar = torch.cat((c_cond_new[:,:2], orient_factor.view(-1,1), c_cond_new[:,2:]),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40)] + [1])
-        latent = np.digitize(c_cond[:,2].cpu(),bins)
+        latent = np.digitize(c_cond[:,2].cpu(), self.orientation_bins)
         latent =  [x - 1 for x in latent.tolist()]
         replace_list = []
         for current_value in latent:
@@ -278,8 +280,7 @@ class Trainer(object):
         # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
         #                     device=self.device) * 2 - 1
         # c_cond_similar = torch.cat((c_cond_new[:,:3], xpos_factor.view(-1,1), c_cond_new[:,3:]),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/32 for x in range(1,32) ] + [1])
-        latent = np.digitize(c_cond[:,3].cpu(),bins)
+        latent = np.digitize(c_cond[:,3].cpu(),self.xpos_bins)
         latent =  [x - 1 for x in latent.tolist()]
         replace_list = []
         for current_value in latent:
@@ -296,8 +297,7 @@ class Trainer(object):
         # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
         #                     device=self.device) * 2 - 1
         # c_cond_similar = torch.cat((c_cond_new[:,:4], ypos_factor.view(-1,1)),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/32 for x in range(1,32)] + [1])
-        latent = np.digitize(c_cond[:,4].cpu(),bins)
+        latent = np.digitize(c_cond[:,4].cpu(),self.ypos_bins)
         latent =  [x - 1 for x in latent.tolist()]
         replace_list = []
         for current_value in latent:
