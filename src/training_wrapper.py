@@ -22,6 +22,9 @@ def run_training_wrapper(configuration, data, perf_logger):
 	perf_logger.stop_monitoring("Fetching data, models and class instantiations")
 	print_network(model.encoder)
 	print_network(model.decoder)
+	model.encoder.cuda()
+	model.decoder.cuda()
+	model.cr_disc.cuda()
 
 	for i in range(configuration['epochs']):
 		if configuration['model_arch'] == 'vae':

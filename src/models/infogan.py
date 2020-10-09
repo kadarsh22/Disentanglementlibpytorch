@@ -112,6 +112,8 @@ class Discriminator(nn.Module):
         c_cont = self.module_Q_no_spectral(out)
         return c_cont, probability
 
+
+
     def forward(self, z):
         z = z.type(torch.cuda.FloatTensor)
         out = self.module_shared_spectral(z.view(-1, 1, 64, 64))
@@ -130,12 +132,59 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 
+class CRDiscriminator(nn.Module):
+    '''Shared Part of Discriminator and Recognition Model'''
+
+    def __init__(self, dim_c_cont):
+        super(CRDiscriminator, self).__init__()
+        # self.dim_c_disc = dim_c_disc
+        self.dim_c_cont = dim_c_cont
+        # self.n_c_disc = n_c_disc
+        # Shared layers
+        self.module = nn.Sequential(
+            spectral_norm(nn.Conv2d(in_channels=1,
+                                    out_channels=32,
+                                    kernel_size=4,
+                                    stride=2,
+                                    padding=1)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(nn.Conv2d(in_channels=32,
+                                    out_channels=32,
+                                    kernel_size=4,
+                                    stride=2,
+                                    padding=1)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(nn.Conv2d(in_channels=32,
+                                    out_channels=64,
+                                    kernel_size=4,
+                                    stride=2,
+                                    padding=1)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(nn.Conv2d(in_channels=64,
+                                    out_channels=64,
+                                    kernel_size=4,
+                                    stride=2,
+                                    padding=1)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            Reshape(-1, 64*4*4),
+            spectral_norm(nn.Linear(in_features=64*4*4, out_features=128)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.Linear(in_features=128, out_features=self.dim_c_cont),
+        )
+
+    def forward(self, positive, negative):
+        pos = self.module(positive)
+        neg = self.module(negative)
+        return pos , neg
+
+
 class InfoGan(object):
     def __init__(self, config):
         super(InfoGan, self).__init__()
 
         self.decoder = Generator(dim_z=config['noise_dim'], dim_c_cont=config['latent_dim'])
         self.encoder = Discriminator(dim_c_cont=config['latent_dim'])
+        self.cr_disc = CRDiscriminator(dim_c_cont=config['latent_dim'])
 
     def dummy(self):
         print('This is a dummy function')
