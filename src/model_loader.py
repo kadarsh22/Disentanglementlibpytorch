@@ -20,6 +20,16 @@ def get_model(config):
     elif model_name == 'infogan':
         from infogan import InfoGan
         model = InfoGan(config)
+        # weight_oracle = torch.load('../pretrained_models/model_shape.pth')
+        # model.oracle_shape.load_state_dict(weight_oracle)
+        # weight_oracle = torch.load('../pretrained_models/model_size.pth')
+        # model.oracle_size.load_state_dict(weight_oracle)
+        # weight_oracle = torch.load('../pretrained_models/model_orient.pth')
+        # model.oracle_orient.load_state_dict(weight_oracle)
+        # weight_oracle = torch.load('../pretrained_models/model_xpos.pth')
+        # model.oracle_xpos.load_state_dict(weight_oracle)
+        # weight_oracle = torch.load('../pretrained_models/model_ypos.pth')
+        # model.oracle_ypos.load_state_dict(weight_oracle)
         model.decoder.apply(weights_init_normal)
         model.encoder.apply(weights_init_normal)
         d_optimizer = torch.optim.Adam([{'params': model.encoder.conv1.parameters()},

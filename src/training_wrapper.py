@@ -20,8 +20,18 @@ def run_training_wrapper(configuration, data, perf_logger):
 	saver = Saver(configuration)
 	visualise_results = Visualiser(configuration)
 	perf_logger.stop_monitoring("Fetching data, models and class instantiations")
-	print_network(model.encoder)
-	print_network(model.decoder)
+	# model, optimizer, loss = saver.load_model(model=model, optimizer=optimizer)
+	# optimizer_list = list(optimizer)
+	# optimizer = tuple(optimizer_list)
+	model.encoder.cuda()
+	model.decoder.cuda()
+	model.oracle_shape.cuda()
+	model.oracle_size.cuda()
+	model.oracle_orient.cuda()
+	model.oracle_xpos.cuda()
+	model.oracle_ypos.cuda()
+	# print_network(model.encoder)
+	# print_network(model.decoder)
 
 	for i in range(configuration['epochs']):
 		if configuration['model_arch'] == 'vae':

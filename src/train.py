@@ -62,7 +62,7 @@ class Trainer(object):
 
 
             positive_orient_samples ,negative_orient_samples, orient_similar, orient_differ = self.get_sample_oracle_orient_pairs(c_cond)
-            positive_shape_samples ,negative_shape_samples , shape_similar, shape_differ= self.get_sample_oracle_shape_pairs(c_cond)
+            # positive_shape_samples ,negative_shape_samples , shape_similar, shape_differ= self.get_sample_oracle_shape_pairs(c_cond)
             positive_size_samples ,negative_size_samples , size_similar, size_differ= self.get_sample_oracle_size_pairs(c_cond)
             positive_xpos_samples ,negative_xpos_samples , xpos_similar, xpos_differ= self.get_sample_oracle_xpos_pairs(c_cond)
             positive_ypos_samples ,negative_ypos_samples, ypos_similar, ypos_differ = self.get_sample_oracle_ypos_pairs(c_cond)
@@ -71,41 +71,42 @@ class Trainer(object):
 
             fake_x = model.decoder(z)
             latent_code, prob_fake = model.encoder(fake_x)
-            pos_shape, neg_shape, que_shape = model.oracle_shape(positive_shape_samples.cuda() ,negative_shape_samples.cuda() , fake_x)
+            # pos_shape, neg_shape, que_shape = model.oracle_shape(positive_shape_samples.cuda() ,negative_shape_samples.cuda() , fake_x)
             pos_size, neg_size, que_size = model.oracle_size(positive_size_samples.cuda() ,negative_size_samples.cuda() , fake_x)
             pos_orient, neg_orient, que_orient = model.oracle_orient(positive_orient_samples.cuda() ,negative_orient_samples.cuda() , fake_x)
             pos_xpos, neg_xpos, que_xpos = model.oracle_xpos(positive_xpos_samples.cuda() ,negative_xpos_samples.cuda() , fake_x)
             pos_ypos, neg_ypos, que_ypos = model.oracle_ypos(positive_ypos_samples.cuda() ,negative_ypos_samples.cuda() , fake_x)
 
-            pos_gen_shape ,neg_gen_shape ,que_gen_shape = model.oracle_shape(model.decoder(torch.cat((z_noise, shape_similar), dim=1)),
-                                                                        model.decoder(torch.cat((z_noise, shape_differ), dim=1)), fake_x)
-            pos_gen_size ,neg_gen_size ,que_gen_size = model.oracle_shape(model.decoder(torch.cat((z_noise, size_similar), dim=1)),
-                                                                        model.decoder(torch.cat((z_noise, size_differ), dim=1)), fake_x)
-            pos_gen_orient ,neg_gen_orient ,que_gen_orient = model.oracle_shape(model.decoder(torch.cat((z_noise, orient_similar), dim=1)),
-                                                                        model.decoder(torch.cat((z_noise, orient_differ), dim=1)), fake_x)
-            pos_gen_xpos ,neg_gen_xpos ,que_gen_xpos = model.oracle_shape(model.decoder(torch.cat((z_noise, xpos_similar), dim=1)),
-                                                                        model.decoder(torch.cat((z_noise, xpos_differ), dim=1)), fake_x)
-            pos_gen_ypos ,neg_gen_ypos ,que_gen_ypos = model.oracle_shape(model.decoder(torch.cat((z_noise, ypos_similar), dim=1)),
-                                                                        model.decoder(torch.cat((z_noise, ypos_differ), dim=1)), fake_x)
+            # pos_gen_shape ,neg_gen_shape ,que_gen_shape = model.oracle_shape(model.decoder(torch.cat((z_noise, shape_similar), dim=1)),
+            #                                                             model.decoder(torch.cat((z_noise, shape_differ), dim=1)), fake_x)
+            # pos_gen_size ,neg_gen_size ,que_gen_size = model.oracle_size(model.decoder(torch.cat((z_noise, size_similar), dim=1)),
+            #                                                             model.decoder(torch.cat((z_noise, size_differ), dim=1)), fake_x)
+            # pos_gen_orient ,neg_gen_orient ,que_gen_orient = model.oracle_orient(model.decoder(torch.cat((z_noise, orient_similar), dim=1)),
+            #                                                             model.decoder(torch.cat((z_noise, orient_differ), dim=1)), fake_x)
+            # pos_gen_xpos ,neg_gen_xpos ,que_gen_xpos = model.oracle_xpos(model.decoder(torch.cat((z_noise, xpos_similar), dim=1)),
+            #                                                             model.decoder(torch.cat((z_noise, xpos_differ), dim=1)), fake_x)
+            # pos_gen_ypos ,neg_gen_ypos ,que_gen_ypos = model.oracle_ypos(model.decoder(torch.cat((z_noise, ypos_similar), dim=1)),
+            #                                                             model.decoder(torch.cat((z_noise, ypos_differ), dim=1)), fake_x)
 
 
 
             g_loss = adversarial_loss(prob_fake, label_real)
             cont_loss = criterionQ_con(c_cond, latent_code)
             oracle_orient_loss = similarity_loss(que_orient, pos_orient, neg_orient)
-            oracle_shape_loss = similarity_loss(que_shape, pos_shape, neg_shape)
+            # oracle_shape_loss = similarity_loss(que_shape, pos_shape, neg_shape)
             oracle_size_loss = similarity_loss(que_size, pos_size, neg_size)
             oracle_xpos_loss = similarity_loss(que_xpos, pos_xpos, neg_xpos)
             oracle_ypos_loss = similarity_loss(que_ypos, pos_ypos, neg_ypos)
 
-            oracle_orient_genloss = similarity_loss(que_gen_orient, pos_gen_orient, neg_gen_orient)
-            oracle_shape_genloss = similarity_loss(que_gen_shape , pos_gen_shape, neg_gen_shape)
-            oracle_size_genloss = similarity_loss(que_gen_size, pos_gen_size, neg_gen_size)
-            oracle_xpos_genloss = similarity_loss(que_gen_xpos, pos_gen_xpos, neg_gen_xpos)
-            oracle_ypos_genloss = similarity_loss(que_gen_ypos, pos_gen_ypos, neg_gen_ypos)
+            # oracle_orient_genloss = similarity_loss(que_gen_orient, pos_gen_orient, neg_gen_orient)
+            # # oracle_shape_genloss = similarity_loss(que_gen_shape , pos_gen_shape, neg_gen_shape)
+            # oracle_size_genloss = similarity_loss(que_gen_size, pos_gen_size, neg_gen_size)
+            # oracle_xpos_genloss = similarity_loss(que_gen_xpos, pos_gen_xpos, neg_gen_xpos)
+            # oracle_ypos_genloss = similarity_loss(que_gen_ypos, pos_gen_ypos, neg_gen_ypos)
 
-            G_loss = g_loss + cont_loss * 0.05 + oracle_orient_loss + oracle_shape_loss + oracle_size_loss + oracle_xpos_loss + oracle_ypos_loss \
-                     + oracle_shape_genloss + oracle_size_genloss + oracle_orient_genloss + oracle_xpos_genloss + oracle_ypos_genloss
+            G_loss = g_loss + cont_loss * 0.05 +  oracle_orient_loss + oracle_size_loss + oracle_xpos_loss + oracle_ypos_loss
+            # oracle_size_genloss + oracle_orient_genloss + oracle_xpos_genloss + oracle_ypos_genloss + \
+
             G_loss.backward()
 
             g_optimizer.step()
@@ -129,7 +130,7 @@ class Trainer(object):
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
-            oracle_loss_summary = oracle_loss_summary + oracle_orient_loss.item() + oracle_shape_loss.item() +\
+            oracle_loss_summary = oracle_loss_summary + oracle_orient_loss.item() + \
                                 oracle_size_loss.item() +oracle_xpos_loss.item() + oracle_ypos_loss.item()
         #
         logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F Oracle_Loss %.5F" % (
