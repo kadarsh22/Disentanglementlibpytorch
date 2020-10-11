@@ -157,11 +157,9 @@ class Classifier(nn.Module):
         z_parameters = self.z_mean(out)
         return z_parameters
 
-    def forward(self, positive,negative,query):
-        pos = self.encoder(positive)
-        neg = self.encoder(negative)
-        que = self.encoder(query)
-        return pos ,neg , que
+    def forward(self, x):
+        pos = self.encoder(x)
+        return pos
 
 
 class InfoGan(object):
@@ -170,11 +168,11 @@ class InfoGan(object):
 
         self.decoder = Generator(dim_z=config['noise_dim'], dim_c_cont=config['latent_dim'])
         self.encoder = Discriminator(dim_c_cont=config['latent_dim'])
-        self.oracle_shape = Classifier()
-        self.oracle_size = Classifier()
-        self.oracle_orient = Classifier()
-        self.oracle_xpos = Classifier()
-        self.oracle_ypos = Classifier()
+        self.oracle_shape = Classifier(output_dim=3)
+        self.oracle_size = Classifier(output_dim=6)
+        self.oracle_orientation = Classifier(output_dim=40)
+        self.oracle_xpos = Classifier(output_dim=32)
+        self.oracle_ypos = Classifier(output_dim=32)
 
     def dummy(self):
         print('This is a dummy function')

@@ -27,7 +27,7 @@ def run_training_wrapper(configuration, data, perf_logger):
 	model.decoder.cuda()
 	model.oracle_shape.cuda()
 	model.oracle_size.cuda()
-	model.oracle_orient.cuda()
+	model.oracle_orientation.cuda()
 	model.oracle_xpos.cuda()
 	model.oracle_ypos.cuda()
 	# print_network(model.encoder)

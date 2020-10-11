@@ -2,6 +2,7 @@ import time
 import os
 import random
 from utils import *
+import torch.functional as F
 import numpy
 from sklearn.model_selection import train_test_split
 log = logging.getLogger(__name__)
@@ -16,6 +17,17 @@ class Trainer(object):
         self.train_loader = self._get_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
+        # self.shape_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(6 * 40 * 32 * 32 + 1, 3 * 6 * 40 * 32 * 32 + 1, 6 * 40 * 32 * 32)]]))
+        self.size_template =  torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(40 * 32 * 32 + 1, 6 * 40 * 32 * 32 + 1, 40 * 32 * 32)]]))
+        self.orientation_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32 * 32 + 1, 40 * 32 * 32 + 1, 32 * 32)]]))
+        self.xpos_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32, 32 * 32, 32)]]))
+        self.ypos_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[x for x in range(32)]]))
+
+        self.shape_bins = np.array([-1] + [-1 + 2*x/3 for x in range(1,3)] +[1])
+        self.size_bins = np.array([-1] + [-1 + 2*x/6 for x in range(1,6)] + [1])
+        self.orientation_bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40)] + [1])
+        self.xpos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32) ] + [1])
+        self.ypos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32)] + [1])
 
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
@@ -47,12 +59,111 @@ class Trainer(object):
 
         adversarial_loss = torch.nn.BCELoss()
         criterionQ_con = log_gaussian()
-        similarity_loss = torch.nn.TripletMarginLoss()
+        similarity_loss = torch.nn.CrossEntropyLoss()
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
         for iter, images in enumerate(self.train_loader):
             images = images.type(torch.FloatTensor).to(self.device)
+
+            if iter%500 ==0:
+                size_optimizer = torch.optim.Adam(model.oracle_size.parameters(), lr=0.001)
+                orientation_optimizer = torch.optim.Adam(model.oracle_orientation.parameters(), lr=0.001)
+                xpos_optimizer = torch.optim.Adam(model.oracle_xpos.parameters(), lr=0.001)
+                ypos_optimizer = torch.optim.Adam(model.oracle_ypos.parameters(), lr=0.001)
+                model.oracle_size.apply(weights_init_normal)
+                model.oracle_orientation.apply(weights_init_normal)
+                model.oracle_xpos.apply(weights_init_normal)
+                model.oracle_ypos.apply(weights_init_normal)
+                for i in range(500):
+                    z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                                         device=self.device) * 2 - 1
+                    c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                                        device=self.device) * 2 - 1
+
+                    z = torch.cat((z_noise, c_cond), dim=1)
+
+                    fake_x = model.decoder(z)
+                    size_label = torch.LongTensor(np.digitize(c_cond[:, 1].cpu(), self.size_bins)).cuda().detach()
+                    data_shot = self.size_template
+                    proto_labels = model.oracle_size(data_shot)
+                    query_labels = model.oracle_size(fake_x.detach())
+
+                    logits = euclidean_dist(query_labels, proto_labels)
+                    prob = torch.nn.functional.softmax(logits,dim=1)
+                    loss = torch.nn.functional.cross_entropy(prob,size_label)
+
+
+                    size_optimizer.zero_grad()
+                    loss.backward()
+                    size_optimizer.step()
+
+                for i in range(500):
+                    z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                                         device=self.device) * 2 - 1
+                    c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                                        device=self.device) * 2 - 1
+
+                    z = torch.cat((z_noise, c_cond), dim=1)
+
+                    fake_x = model.decoder(z)
+                    orientation_label = torch.LongTensor(np.digitize(c_cond[:, 2].cpu(), self.orientation_bins)).cuda()
+                    data_shot = self.orientation_template
+                    proto_labels = model.oracle_orientation(data_shot)
+                    query_labels = model.oracle_orientation(fake_x)
+
+                    logits = euclidean_metric(query_labels, proto_labels)
+                    loss = F.cross_entropy(logits, orientation_label)
+
+                    orientation_optimizer.zero_grad()
+                    loss.backward()
+                    orientation_optimizer.step()
+
+                for i in range(500):
+                    z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                                         device=self.device) * 2 - 1
+                    c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                                        device=self.device) * 2 - 1
+
+                    z = torch.cat((z_noise, c_cond), dim=1)
+
+                    fake_x = model.decoder(z)
+                    xpos_label = torch.LongTensor(np.digitize(c_cond[:, 1].cpu(), self.xpos_bins)).cuda()
+                    data_shot = self.xpos_template
+                    proto_labels = model.oracle_xpos(data_shot)
+                    query_labels = model.oracle_xpos(fake_x)
+
+                    logits = euclidean_metric(query_labels, proto_labels)
+                    loss = F.cross_entropy(logits, xpos_label)
+
+                    xpos_optimizer.zero_grad()
+                    loss.backward()
+                    xpos_optimizer.step()
+
+                for i in range(500):
+                    z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                                         device=self.device) * 2 - 1
+                    c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                                        device=self.device) * 2 - 1
+
+                    z = torch.cat((z_noise, c_cond), dim=1)
+
+                    fake_x = model.decoder(z)
+                    ypos_label = torch.LongTensor(np.digitize(c_cond[:, 1].cpu(), self.ypos_bins)).cuda()
+                    data_shot = self.ypos_template
+                    proto_labels = model.oracle_ypos(data_shot)
+                    query_labels = model.oracle_ypos(fake_x)
+
+                    logits = euclidean_metric(query_labels, proto_labels)
+                    loss = F.cross_entropy(logits, ypos_label)
+
+                    ypos_optimizer.zero_grad()
+                    loss.backward()
+                    ypos_optimizer.step()
+
+
+            g_optimizer.zero_grad()
+
             z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
                                  device=self.device) * 2 - 1
             c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
@@ -60,52 +171,19 @@ class Trainer(object):
 
             z = torch.cat((z_noise, c_cond), dim=1)
 
-
-            positive_orient_samples ,negative_orient_samples, orient_similar, orient_differ = self.get_sample_oracle_orient_pairs(c_cond)
-            # positive_shape_samples ,negative_shape_samples , shape_similar, shape_differ= self.get_sample_oracle_shape_pairs(c_cond)
-            positive_size_samples ,negative_size_samples , size_similar, size_differ= self.get_sample_oracle_size_pairs(c_cond)
-            positive_xpos_samples ,negative_xpos_samples , xpos_similar, xpos_differ= self.get_sample_oracle_xpos_pairs(c_cond)
-            positive_ypos_samples ,negative_ypos_samples, ypos_similar, ypos_differ = self.get_sample_oracle_ypos_pairs(c_cond)
-
-            g_optimizer.zero_grad()
+            size_label = np.digitize(c_cond[:, 1].cpu(), self.size_bins)
+            orient_label = np.digitize(c_cond[:, 2].cpu(), self.orientation_bins)
+            xpos_label = np.digitize(c_cond[:, 3].cpu(), self.xpos_bins)
+            ypos_label = np.digitize(c_cond[:, 4].cpu(), self.ypos_bins)
 
             fake_x = model.decoder(z)
             latent_code, prob_fake = model.encoder(fake_x)
-            # pos_shape, neg_shape, que_shape = model.oracle_shape(positive_shape_samples.cuda() ,negative_shape_samples.cuda() , fake_x)
-            pos_size, neg_size, que_size = model.oracle_size(positive_size_samples.cuda() ,negative_size_samples.cuda() , fake_x)
-            pos_orient, neg_orient, que_orient = model.oracle_orient(positive_orient_samples.cuda() ,negative_orient_samples.cuda() , fake_x)
-            pos_xpos, neg_xpos, que_xpos = model.oracle_xpos(positive_xpos_samples.cuda() ,negative_xpos_samples.cuda() , fake_x)
-            pos_ypos, neg_ypos, que_ypos = model.oracle_ypos(positive_ypos_samples.cuda() ,negative_ypos_samples.cuda() , fake_x)
-
-            # pos_gen_shape ,neg_gen_shape ,que_gen_shape = model.oracle_shape(model.decoder(torch.cat((z_noise, shape_similar), dim=1)),
-            #                                                             model.decoder(torch.cat((z_noise, shape_differ), dim=1)), fake_x)
-            # pos_gen_size ,neg_gen_size ,que_gen_size = model.oracle_size(model.decoder(torch.cat((z_noise, size_similar), dim=1)),
-            #                                                             model.decoder(torch.cat((z_noise, size_differ), dim=1)), fake_x)
-            # pos_gen_orient ,neg_gen_orient ,que_gen_orient = model.oracle_orient(model.decoder(torch.cat((z_noise, orient_similar), dim=1)),
-            #                                                             model.decoder(torch.cat((z_noise, orient_differ), dim=1)), fake_x)
-            # pos_gen_xpos ,neg_gen_xpos ,que_gen_xpos = model.oracle_xpos(model.decoder(torch.cat((z_noise, xpos_similar), dim=1)),
-            #                                                             model.decoder(torch.cat((z_noise, xpos_differ), dim=1)), fake_x)
-            # pos_gen_ypos ,neg_gen_ypos ,que_gen_ypos = model.oracle_ypos(model.decoder(torch.cat((z_noise, ypos_similar), dim=1)),
-            #                                                             model.decoder(torch.cat((z_noise, ypos_differ), dim=1)), fake_x)
-
-
-
             g_loss = adversarial_loss(prob_fake, label_real)
             cont_loss = criterionQ_con(c_cond, latent_code)
-            oracle_orient_loss = similarity_loss(que_orient, pos_orient, neg_orient)
-            # oracle_shape_loss = similarity_loss(que_shape, pos_shape, neg_shape)
-            oracle_size_loss = similarity_loss(que_size, pos_size, neg_size)
-            oracle_xpos_loss = similarity_loss(que_xpos, pos_xpos, neg_xpos)
-            oracle_ypos_loss = similarity_loss(que_ypos, pos_ypos, neg_ypos)
+            proto_loss = similarity_loss(model.oracle_size(fake_x),size_label) + similarity_loss(model.oracle_orientation(fake_x),orient_label) + similarity_loss(model.oracle_xpos(fake_x),xpos_label) + \
+                         similarity_loss(model.oracle_ypos(fake_x),ypos_label)
 
-            # oracle_orient_genloss = similarity_loss(que_gen_orient, pos_gen_orient, neg_gen_orient)
-            # # oracle_shape_genloss = similarity_loss(que_gen_shape , pos_gen_shape, neg_gen_shape)
-            # oracle_size_genloss = similarity_loss(que_gen_size, pos_gen_size, neg_gen_size)
-            # oracle_xpos_genloss = similarity_loss(que_gen_xpos, pos_gen_xpos, neg_gen_xpos)
-            # oracle_ypos_genloss = similarity_loss(que_gen_ypos, pos_gen_ypos, neg_gen_ypos)
-
-            G_loss = g_loss + cont_loss * 0.05 +  oracle_orient_loss + oracle_size_loss + oracle_xpos_loss + oracle_ypos_loss
-            # oracle_size_genloss + oracle_orient_genloss + oracle_xpos_genloss + oracle_ypos_genloss + \
+            G_loss = g_loss + cont_loss * 0.05 + proto_loss
 
             G_loss.backward()
 
@@ -130,8 +208,7 @@ class Trainer(object):
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
-            oracle_loss_summary = oracle_loss_summary + oracle_orient_loss.item() + \
-                                oracle_size_loss.item() +oracle_xpos_loss.item() + oracle_ypos_loss.item()
+            oracle_loss_summary = oracle_loss_summary + proto_loss.item()
         #
         logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F Oracle_Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
@@ -193,101 +270,20 @@ class Trainer(object):
         return train_loader
 
 
-    def get_sample_oracle_shape_pairs(self , c_cond):
-        shape_factor = c_cond[:, 0]
-        c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
-                            device=self.device) * 2 - 1
-        c_cond_similar = torch.cat((shape_factor.view(-1,1), c_cond_new),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/3 for x in range(1,3)] +[1])
-        latent = np.digitize(c_cond[:,0].cpu(),bins)
-        latent =  [x - 1 for x in latent.tolist()]
-        orientation_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(6 * 40 * 32 * 32 + 1, 3 * 6 * 40 * 32 * 32 + 1, 6 * 40 * 32 * 32)]]))
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 3)))
-            replace_list.append(replace_value)
-        differ_shape = torch.FloatTensor([random.uniform(bins[x],bins[x+1]) for x in  replace_list]).view(-1,1).to(self.device)
-        c_cond_differ = torch.cat((differ_shape, c_cond[:,1:]),dim=-1)
-        negative_samples = torch.stack([orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples ,c_cond_similar ,c_cond_differ
 
-    def get_sample_oracle_size_pairs(self , c_cond):
-        size_factor = c_cond[:, 1]
-        c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
-                            device=self.device) * 2 - 1
-        c_cond_similar = torch.cat((c_cond_new[:,:1], size_factor.view(-1,1), c_cond_new[:,1:]),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/6 for x in range(1,6)] + [1])
-        latent = np.digitize(c_cond[:,1].cpu(),bins)
-        latent =  [x - 1 for x in latent.tolist()]
-        orientation_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(40 * 32 * 32 + 1, 6 * 40 * 32 * 32 + 1, 40 * 32 * 32)]]))
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 6)))
-            replace_list.append(replace_value)
-        differ_size = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        c_cond_differ = torch.cat((c_cond[:,:1] ,differ_size, c_cond[:, 2:]), dim=-1)
-        negative_samples = torch.stack([orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples ,c_cond_similar ,c_cond_differ
+def euclidean_dist(x, y):
+    '''
+    Compute euclidean distance between two tensors
+    '''
+    # x: N x D
+    # y: M x D
+    n = x.size(0)
+    m = y.size(0)
+    d = x.size(1)
+    if d != y.size(1):
+        raise Exception
 
-    def get_sample_oracle_orient_pairs(self , c_cond):
-        orient_factor = c_cond[:, 2]
-        c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
-                            device=self.device) * 2 - 1
-        c_cond_similar = torch.cat((c_cond_new[:,:2], orient_factor.view(-1,1), c_cond_new[:,2:]),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40)] + [1])
-        latent = np.digitize(c_cond[:,2].cpu(),bins)
-        latent =  [x - 1 for x in latent.tolist()]
-        orientation_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32 * 32 + 1, 40 * 32 * 32 + 1, 32 * 32)]]))
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 40)))
-            replace_list.append(replace_value)
-        differ_orient = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        c_cond_differ = torch.cat((c_cond[:,:2] ,differ_orient, c_cond[:, 3:]), dim=-1)
-        negative_samples = torch.stack([orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples ,c_cond_similar ,c_cond_differ
-
-    def get_sample_oracle_xpos_pairs(self , c_cond):
-        xpos_factor = c_cond[:, 3]
-        c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
-                            device=self.device) * 2 - 1
-        c_cond_similar = torch.cat((c_cond_new[:,:3], xpos_factor.view(-1,1), c_cond_new[:,3:]),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/32 for x in range(1,32) ] + [1])
-        latent = np.digitize(c_cond[:,3].cpu(),bins)
-        latent =  [x - 1 for x in latent.tolist()]
-        orientation_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32, 32 * 32, 32)]]))
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 32)))
-            replace_list.append(replace_value)
-        differ_xpos = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        c_cond_differ = torch.cat((c_cond[:,:3] ,differ_xpos, c_cond[:, 4:]), dim=-1)
-        negative_samples = torch.stack([orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples ,c_cond_similar ,c_cond_differ
-
-    def get_sample_oracle_ypos_pairs(self , c_cond):
-        ypos_factor = c_cond[:, 4]
-        c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
-                            device=self.device) * 2 - 1
-        c_cond_similar = torch.cat((c_cond_new[:,:4], ypos_factor.view(-1,1)),dim=-1)
-        bins = np.array([-1] + [-1 + 2*x/32 for x in range(1,32)] + [1])
-        latent = np.digitize(c_cond[:,4].cpu(),bins)
-        latent =  [x - 1 for x in latent.tolist()]
-        orientation_template =torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[x for x in range(32)]]))
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 32)))
-            replace_list.append(replace_value)
-        differ_ypos = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        c_cond_differ = torch.cat((c_cond[:,:4] ,differ_ypos), dim=-1)
-        negative_samples = torch.stack([orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples ,c_cond_similar ,c_cond_differ
-
-
-
+    x = x.unsqueeze(1).expand(n, m, d)
+    y = y.unsqueeze(0).expand(n, m, d)
+    return -((x - y)**2).sum(dim=2)
 
