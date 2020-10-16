@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import spectral_norm
 import torch.nn.functional as F
-from torch.nn import Parameter
+
 '''
 Generator Model Definition
 '''
@@ -62,101 +62,91 @@ class Discriminator(nn.Module):
         self.linear1 = nn.Linear(in_features=64 * 4 * 4, out_features=128)
         self.linear2 = nn.Linear(in_features=128, out_features=128)
         self.linear3 = nn.Linear(in_features=128, out_features=self.dim_c_cont)
-        # self.linear4 = nn.Linear(in_features=128, out_features=128)
-        # self.linear5 = nn.Linear(in_features=128, out_features=self.dim_c_cont)
-        self.disc_layer = nn.Linear(in_features=128, out_features=1)
+        self.linear4 = nn.Linear(in_features=128, out_features=128)
+        self.linear5 = nn.Linear(in_features=128, out_features=self.dim_c_cont)
 
+        self.module_shared_spectral = nn.Sequential(
+            spectral_norm(self.conv1),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(self.conv2),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(self.conv3),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(self.conv4),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            Reshape(-1, 64 * 4 * 4),
+            spectral_norm(self.linear1),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+        )
+        self.module_shared_no_spectral = nn.Sequential(
+            self.conv1,
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            self.conv2,
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            self.conv3,
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            self.conv4,
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            Reshape(-1, 64 * 4 * 4),
+            self.linear1,
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+        )
 
+        self.module_Q_no_spectral = nn.Sequential(
+            self.linear2,
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            self.linear3)
 
+        self.module_Q_similarity_no_spectral = nn.Sequential(
+            self.linear4,
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            self.linear5)
+
+        # Layer for Discriminating
+        self.module_D = nn.Sequential(nn.Linear(in_features=128, out_features=1), nn.Sigmoid())
+
+        self.module_Q_spectral = nn.Sequential(
+            spectral_norm(self.linear2),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(self.linear3)
+        )
+
+        self.module_Q_similarity = nn.Sequential(
+            spectral_norm(self.linear4),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(self.linear5)
+        )
 
     def forward_no_spectral(self, z):
         z = z.type(torch.cuda.FloatTensor)
-        out = F.leaky_relu(self.conv1(z.view(-1, 1, 64, 64)),negative_slope=0.2)
-        out = F.leaky_relu(self.conv2(out), negative_slope=0.2)
-        out = F.leaky_relu(self.conv3(out), negative_slope=0.2)
-        out = F.leaky_relu(self.conv4(out), negative_slope=0.2)
-        out = F.leaky_relu(self.linear1(out.view(-1, 64 * 4 * 4)), negative_slope=0.2)
-        probability = F.sigmoid(self.disc_layer(out))
+        out = self.module_shared_no_spectral(z.view(-1, 1, 64, 64))
+        probability = self.module_D(out)
         probability = probability.squeeze()
-        c_vec = F.leaky_relu(self.linear2(out),negative_slope=0.2)
-        c_cont = self.linear3(c_vec)
-        # similarity_vec = F.leaky_relu(self.linear4(out),negative_slope=0.2)
-        # similarity = self.linear5(similarity_vec)
-        return c_cont , probability
+        c_cont = self.module_Q_no_spectral(out)
+        similarity =self.module_Q_similarity_no_spectral(out)
+        return c_cont, probability ,similarity
+
+
 
     def forward(self, z):
         z = z.type(torch.cuda.FloatTensor)
-
-        normalised_weights_conv1 = self.spectral_normed_weight(self.conv1)
-        setattr(self.conv1, 'weight', torch.nn.Parameter(normalised_weights_conv1))
-        out = F.leaky_relu(self.conv1(z.view(-1, 1, 64, 64)),negative_slope=0.2)
-
-        normalised_weights_conv2 = self.spectral_normed_weight(self.conv2)
-        setattr(self.conv2, 'weight', torch.nn.Parameter(normalised_weights_conv2))
-        out = F.leaky_relu(self.conv2(out), negative_slope=0.2)
-
-        normalised_weights_conv3 = self.spectral_normed_weight(self.conv3)
-        setattr(self.conv3, 'weight',torch.nn.Parameter(normalised_weights_conv3))
-        out = F.leaky_relu(self.conv3(out), negative_slope=0.2)
-
-        normalised_weights_conv4 = self.spectral_normed_weight(self.conv4)
-        setattr(self.conv4, 'weight',torch.nn.Parameter(normalised_weights_conv4))
-        out = F.leaky_relu(self.conv4(out), negative_slope=0.2)
-
-        normalised_linear1_weight = self.spectral_normed_weight(self.linear1)
-        setattr(self.linear1, 'weight', torch.nn.Parameter(normalised_linear1_weight))
-        out = F.leaky_relu(self.linear1(out.view(-1, 64 * 4 * 4)), negative_slope=0.2)
-
-        probability = F.sigmoid(self.disc_layer(out))
+        out = self.module_shared_spectral(z.view(-1, 1, 64, 64))
+        probability = self.module_D(out)
         probability = probability.squeeze()
-
-        normalised_linear2_weight = self.spectral_normed_weight(self.linear2)
-        setattr(self.linear2, 'weight', torch.nn.Parameter(normalised_linear2_weight))
-        c_vec = F.leaky_relu(self.linear2(out),negative_slope=0.2)
-
-        normalised_linear3_weight = self.spectral_normed_weight(self.linear3)
-        setattr(self.linear3, 'weight', torch.nn.Parameter(normalised_linear3_weight))
-        c_cont = self.linear3(c_vec)
-        # normalised_linear4_weight = spectral_normed_weight(self.linear4.weight)
-        # self.linear4.weight.data = normalised_linear4_weight
-        # similarity_vec = F.leaky_relu(self.linear4(out),negative_slope=0.2)
-        # normalised_linear5_weight = spectral_normed_weight(self.linear5.weight)
-        # self.linear5.weight.data = normalised_linear5_weight
-        # similarity = self.linear5(similarity_vec)
-        return c_cont ,probability
-
-    def l2normalize(self,v, eps=1e-12):
-        return v / (v.norm() + eps)
-
-    def spectral_normed_weight(self ,module_inp):
-        try:
-            u = getattr(module_inp, 'weight' + "_u")
-            v = getattr(module_inp, 'weight' + "_v")
-            w = getattr(module_inp, 'weight' + "_bar")
-        except AttributeError:
-            w = getattr(module_inp, 'weight')
-
-            height = w.data.shape[0]
-            width = w.view(height, -1).data.shape[1]
-
-            u = Parameter(w.data.new(height).normal_(0, 1), requires_grad=False)
-            v = Parameter(w.data.new(width).normal_(0, 1), requires_grad=False)
-            u.data = l2normalize(u.data)
-            v.data = l2normalize(v.data)
-            w_bar = Parameter(w.data)
-
-            module_inp.register_parameter('weight' + "_u", u)
-            module_inp.register_parameter('weight' + "_v", v)
-            module_inp.register_parameter('weight' + "_bar", w_bar)
+        c_cont = self.module_Q_spectral(out)
+        similarity = self.module_Q_similarity(out)
+        return c_cont, probability ,similarity
 
 
-        height = w.data.shape[0]
-        for _ in range(1):
-            v.data = self.l2normalize(torch.mv(torch.t(w.view(height, -1).data), u.data))
-            u.data = self.l2normalize(torch.mv(w.view(height, -1).data, v.data))
 
-        sigma = u.dot(w.view(height, -1).mv(v))
-        return w / sigma.expand_as(w)
+class Reshape(nn.Module):
+    def __init__(self, *args):
+        super(Reshape, self).__init__()
+        self.shape = args
+
+    def forward(self, x):
+        return x.view(self.shape)
+
 
 class InfoGan(object):
     def __init__(self, config):
@@ -167,6 +157,3 @@ class InfoGan(object):
 
     def dummy(self):
         print('This is a dummy function')
-
-def l2normalize(v, eps=1e-12):
-    return v / (v.norm() + eps)

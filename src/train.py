@@ -60,8 +60,17 @@ class Trainer(object):
 
             g_optimizer.zero_grad()
 
+            # positive_shape_samples ,negative_shape_samples = self.get_sample_oracle_shape_pairs(c_cond)
+            # positive_size_samples ,negative_size_samples = self.get_sample_oracle_size_pairs(c_cond)
+            # positive_orient_samples ,negative_orient_samples = self.get_sample_oracle_orient_pairs(c_cond)
+            # positive_xpos_samples ,negative_xpos_samples= self.get_sample_oracle_xpos_pairs(c_cond)
+            # positive_ypos_samples ,negative_ypos_samples = self.get_sample_oracle_ypos_pairs(c_cond)
+            # postive_pairs = torch.cat((positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_xpos_samples),dim=0).to(self.device)
+            # negative_pairs = torch.cat((negative_size_samples,negative_orient_samples,negative_xpos_samples,negative_ypos_samples),dim=0).to(self.device)
+
             fake_x = model.decoder(z)
-            latent_code, prob_fake = model.encoder(fake_x)
+            # total_images = torch.cat((fake_x,postive_pairs,negative_pairs),dim=0)
+            latent_code, prob_fake , latent_similar = model.encoder(fake_x)
 
             g_loss = adversarial_loss(prob_fake, label_real)
             cont_loss = criterionQ_con(c_cond, latent_code)
@@ -71,13 +80,22 @@ class Trainer(object):
 
             g_optimizer.step()
 
+            ## encoder optimization
             d_optimizer.zero_grad()
-            latent_code, prob_real = model.encoder(images)
+            latent_code, prob_real,_ = model.encoder(images)
             loss_real = adversarial_loss(prob_real, label_real)
             loss_real.backward()
 
             fake_x = model.decoder(z)
-            latent_code_gen, prob_fake = model.encoder.forward_no_spectral(fake_x)
+            latent_code_gen, prob_fake, latent_similar_gen = model.encoder.forward_no_spectral(fake_x)
+            # _ , _ , size_pos_sim  = model.encoder.forward_no_spectral(positive_size_samples)
+            # _ , _ , size_neg_sim   = model.encoder.forward_no_spectral(negative_size_samples)
+            # _ , _ , orient_pos_sim  = model.encoder.forward_no_spectral(positive_orient_samples)
+            # _ , _ , orient_neg_sim   = model.encoder.forward_no_spectral(negative_orient_samples)
+            # _ , _ , xpos_pos_sim  = model.encoder.forward_no_spectral(positive_xpos_samples)
+            # _ , _ , xpos_neg_sim   = model.encoder.forward_no_spectral(negative_xpos_samples)
+            # _ , _ , ypos_pos_sim  = model.encoder.forward_no_spectral(positive_ypos_samples)
+            # _ , _ , ypos_neg_sim   = model.encoder.forward_no_spectral(negative_ypos_samples)
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
             q_loss = criterionQ_con(c_cond, latent_code_gen)
@@ -90,13 +108,15 @@ class Trainer(object):
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
+            oracle_loss_summary = oracle_loss_summary + 0
         #
-        logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F F" % (
+        logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F Oracle_Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
-            g_loss_summary / len(self.train_loader), d_loss_summary / len(self.train_loader), info_loss_summary / len(self.train_loader)))
+            g_loss_summary / len(self.train_loader), d_loss_summary / len(self.train_loader), info_loss_summary / len(self.train_loader) ,oracle_loss_summary / len(self.train_loader)))
         self.train_hist_gan['d_loss'].append(d_loss_summary/ len(self.train_loader))
         self.train_hist_gan['g_loss'].append(g_loss_summary/ len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
+
         return model,self.train_hist_gan, (d_optimizer, g_optimizer)
 
     def train_classifier(self, model, optimizer, epoch):
