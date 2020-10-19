@@ -77,16 +77,16 @@ class Trainer(object):
             loss_real.backward()
 
             fake_x = model.decoder(z)
-            latent_code_gen, prob_fake = model.encoder.forward_no_spectral(fake_x)
+            latent_code_gen, prob_fake = model.encoder(fake_x.detach())
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
             q_loss = criterionQ_con(c_cond, latent_code_gen)
             loss = loss_fake + 0.05 * q_loss
             loss.backward()
 
-            D_loss = loss_real + loss
             d_optimizer.step()
 
+            D_loss = loss_real + loss
             d_loss_summary = d_loss_summary + D_loss.item()
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
