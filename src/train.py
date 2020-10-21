@@ -66,7 +66,7 @@ class Trainer(object):
             g_loss = adversarial_loss(prob_fake, label_real)
             cont_loss = criterionQ_con(c_cond, latent_code)
 
-            G_loss = g_loss + cont_loss * 0.05
+            G_loss = g_loss + cont_loss * 0.1
             G_loss.backward()
 
             g_optimizer.step()
@@ -80,16 +80,14 @@ class Trainer(object):
             latent_code_gen, prob_fake = model.encoder(fake_x.detach())
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
-            q_loss = criterionQ_con(c_cond, latent_code_gen)
-            loss = loss_fake + 0.05 * q_loss
-            loss.backward()
+            loss_fake.backward()
 
             d_optimizer.step()
 
-            D_loss = loss_real + loss
-            d_loss_summary = d_loss_summary + D_loss.item()
+            D_loss = loss_real.item() + loss_fake.item()
+            d_loss_summary = d_loss_summary + D_loss
             g_loss_summary = g_loss_summary + G_loss.item()
-            info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
+            info_loss_summary = info_loss_summary +  cont_loss.item()
         #
         logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F F" % (
             epoch, self.config['epochs'], time.time() - start_time,

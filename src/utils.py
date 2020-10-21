@@ -32,6 +32,7 @@ class log_gaussian:
 
     def __call__(self, x, mu):
         var = torch.ones(mu.shape[0], mu.shape[1]).cuda()
+
         logli = -0.5 * (var.mul(2 * np.pi) + 1e-6).log() - \
                 (x - mu).pow(2).div(var.mul(2.0) + 1e-6)
 
