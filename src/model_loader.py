@@ -20,27 +20,24 @@ def get_model(config):
     elif model_name == 'infogan':
         from infogan import InfoGan
         model = InfoGan(config)
-        # weight_oracle = torch.load('../pretrained_models/model_shape.pth')
-        # model.oracle_shape.load_state_dict(weight_oracle)
-        # weight_oracle = torch.load('../pretrained_models/model_size.pth')
-        # model.oracle_size.load_state_dict(weight_oracle)
-        # weight_oracle = torch.load('../pretrained_models/model_orient.pth')
-        # model.oracle_orient.load_state_dict(weight_oracle)
-        # weight_oracle = torch.load('../pretrained_models/model_xpos.pth')
-        # model.oracle_xpos.load_state_dict(weight_oracle)
-        # weight_oracle = torch.load('../pretrained_models/model_ypos.pth')
-        # model.oracle_ypos.load_state_dict(weight_oracle)
+        weight_oracle = torch.load('../pretrained_models/model_shape.pth')
+        model.oracle_shape.load_state_dict(weight_oracle)
+        weight_oracle = torch.load('../pretrained_models/model_size.pth')
+        model.oracle_size.load_state_dict(weight_oracle)
+        weight_oracle = torch.load('../pretrained_models/model_orient.pth')
+        model.oracle_orient.load_state_dict(weight_oracle)
+        weight_oracle = torch.load('../pretrained_models/model_xpos.pth')
+        model.oracle_xpos.load_state_dict(weight_oracle)
+        weight_oracle = torch.load('../pretrained_models/model_ypos.pth')
+        model.oracle_ypos.load_state_dict(weight_oracle)
         model.decoder.apply(weights_init_normal)
         model.encoder.apply(weights_init_normal)
-        d_optimizer = torch.optim.Adam([{'params': model.encoder.conv1.parameters()},
-                                        {'params': model.encoder.conv2.parameters()},
-                                        {'params': model.encoder.conv3.parameters()},
-                                        {'params': model.encoder.conv4.parameters()},
-                                        {'params': model.encoder.linear1.parameters()},
-                                        {'params': model.encoder.linear2.parameters()},
-                                        {'params': model.encoder.linear3.parameters()}],
+        d_optimizer = torch.optim.Adam([{'params': model.encoder.module_shared.parameters()},
+                                        {'params': model.encoder.module_D.parameters()}],
                                        lr=config['learning_r_D'], betas=(config['beta1'], config['beta2']))
-        g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()}],
+        g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()},
+                                        {'params': model.encoder.module_Q.parameters()},
+                                        {'params': model.encoder.latent_cont.parameters()}],
                                        lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
         optimizer = (d_optimizer, g_optimizer)
 
