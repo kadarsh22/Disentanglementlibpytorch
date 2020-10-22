@@ -15,6 +15,17 @@ class Trainer(object):
         self.train_loader = self._get_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
+        self.shape_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(6 * 40 * 32 * 32 + 1, 3 * 6 * 40 * 32 * 32 + 1, 6 * 40 * 32 * 32)]]))
+        self.size_template =  torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(40 * 32 * 32 + 1, 6 * 40 * 32 * 32 + 1, 40 * 32 * 32)]]))
+        self.orientation_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32 * 32 + 1, 40 * 32 * 32 + 1, 32 * 32)]]))
+        self.xpos_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32, 32 * 32, 32)]]))
+        self.ypos_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[x for x in range(32)]]))
+
+        self.shape_bins = np.array([-1] + [-1 + 2*x/3 for x in range(1,3)] +[1])
+        self.size_bins = np.array([-1] + [-1 + 2*x/6 for x in range(1,6)] + [1])
+        self.orientation_bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40)] + [1])
+        self.xpos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32) ] + [1])
+        self.ypos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32)] + [1])
 
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
@@ -46,6 +57,7 @@ class Trainer(object):
 
         adversarial_loss = torch.nn.BCELoss()
         criterionQ_con = log_gaussian()
+        similarity_loss = torch.nn.TripletMarginLoss()
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
@@ -60,55 +72,47 @@ class Trainer(object):
 
             g_optimizer.zero_grad()
 
-            # positive_shape_samples ,negative_shape_samples = self.get_sample_oracle_shape_pairs(c_cond)
-            # positive_size_samples ,negative_size_samples = self.get_sample_oracle_size_pairs(c_cond)
-            # positive_orient_samples ,negative_orient_samples = self.get_sample_oracle_orient_pairs(c_cond)
-            # positive_xpos_samples ,negative_xpos_samples= self.get_sample_oracle_xpos_pairs(c_cond)
-            # positive_ypos_samples ,negative_ypos_samples = self.get_sample_oracle_ypos_pairs(c_cond)
-            # postive_pairs = torch.cat((positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_xpos_samples),dim=0).to(self.device)
-            # negative_pairs = torch.cat((negative_size_samples,negative_orient_samples,negative_xpos_samples,negative_ypos_samples),dim=0).to(self.device)
+            positive_shape_samples ,negative_shape_samples = self.get_sample_oracle_shape_pairs(c_cond)
+            positive_size_samples ,negative_size_samples = self.get_sample_oracle_size_pairs(c_cond)
+            positive_orient_samples ,negative_orient_samples = self.get_sample_oracle_orient_pairs(c_cond)
+            positive_xpos_samples ,negative_xpos_samples= self.get_sample_oracle_xpos_pairs(c_cond)
+            positive_ypos_samples ,negative_ypos_samples = self.get_sample_oracle_ypos_pairs(c_cond)
+            postive_pairs = torch.cat((positive_shape_samples,positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_xpos_samples),dim=0).to(self.device)
+            negative_pairs = torch.cat((negative_shape_samples, negative_size_samples,negative_orient_samples,negative_xpos_samples,negative_ypos_samples),dim=0).to(self.device)
 
             fake_x = model.decoder(z)
-            # total_images = torch.cat((fake_x,postive_pairs,negative_pairs),dim=0)
-            latent_code, prob_fake , latent_similar = model.encoder(fake_x)
+            total_images = torch.cat((fake_x,postive_pairs,negative_pairs),dim=0)
+            latent_code, prob_fake , latent_similar = model.encoder(total_images)
 
-            g_loss = adversarial_loss(prob_fake, label_real)
-            cont_loss = criterionQ_con(c_cond, latent_code)
-
-            G_loss = g_loss + cont_loss * 0.05
+            g_loss = adversarial_loss(prob_fake[:64], label_real)
+            cont_loss = criterionQ_con(c_cond, latent_code[:64])
+            similarity_loss_shape = similarity_loss(latent_similar[:64],latent_similar[64:128] ,latent_similar[384:448] )
+            similarity_loss_size = similarity_loss(latent_similar[:64],latent_similar[128:192] ,latent_similar[448:512] )
+            similarity_loss_orient = similarity_loss(latent_similar[:64], latent_similar[192:256],latent_similar[512:576] )
+            similarity_loss_xpos = similarity_loss(latent_similar[:64], latent_similar[256:320],latent_similar[576:640] )
+            similarity_loss_ypos = similarity_loss(latent_similar[:64], latent_similar[320:384],latent_similar[640:704] )
+            G_loss = g_loss + cont_loss * 0.1 + similarity_loss_shape + similarity_loss_size + similarity_loss_orient + similarity_loss_xpos + similarity_loss_ypos
             G_loss.backward()
 
             g_optimizer.step()
 
-            ## encoder optimization
             d_optimizer.zero_grad()
-            latent_code, prob_real,_ = model.encoder(images)
+            latent_code, prob_real, _ = model.encoder(images)
             loss_real = adversarial_loss(prob_real, label_real)
             loss_real.backward()
 
             fake_x = model.decoder(z)
-            latent_code_gen, prob_fake, latent_similar_gen = model.encoder.forward_no_spectral(fake_x)
-            # _ , _ , size_pos_sim  = model.encoder.forward_no_spectral(positive_size_samples)
-            # _ , _ , size_neg_sim   = model.encoder.forward_no_spectral(negative_size_samples)
-            # _ , _ , orient_pos_sim  = model.encoder.forward_no_spectral(positive_orient_samples)
-            # _ , _ , orient_neg_sim   = model.encoder.forward_no_spectral(negative_orient_samples)
-            # _ , _ , xpos_pos_sim  = model.encoder.forward_no_spectral(positive_xpos_samples)
-            # _ , _ , xpos_neg_sim   = model.encoder.forward_no_spectral(negative_xpos_samples)
-            # _ , _ , ypos_pos_sim  = model.encoder.forward_no_spectral(positive_ypos_samples)
-            # _ , _ , ypos_neg_sim   = model.encoder.forward_no_spectral(negative_ypos_samples)
+            latent_code_gen, prob_fake , _ = model.encoder(fake_x.detach())
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
-            q_loss = criterionQ_con(c_cond, latent_code_gen)
-            loss = loss_fake + 0.05 * q_loss
-            loss.backward()
+            loss_fake.backward()
 
-            D_loss = loss_real + loss
             d_optimizer.step()
 
-            d_loss_summary = d_loss_summary + D_loss.item()
+            D_loss = loss_real.item() + loss_fake.item()
+            d_loss_summary = d_loss_summary + D_loss
             g_loss_summary = g_loss_summary + G_loss.item()
-            info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
-            oracle_loss_summary = oracle_loss_summary + 0
+            info_loss_summary = info_loss_summary +  cont_loss.item()
         #
         logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F Oracle_Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
