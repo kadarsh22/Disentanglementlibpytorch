@@ -91,7 +91,7 @@ class Trainer(object):
             similarity_loss_orient = similarity_loss(latent_similar[:64], latent_similar[192:256],latent_similar[512:576] )
             similarity_loss_xpos = similarity_loss(latent_similar[:64], latent_similar[256:320],latent_similar[576:640] )
             similarity_loss_ypos = similarity_loss(latent_similar[:64], latent_similar[320:384],latent_similar[640:704] )
-            G_loss = g_loss + cont_loss * 0.1 + similarity_loss_shape + similarity_loss_size + similarity_loss_orient + similarity_loss_xpos + similarity_loss_ypos
+            G_loss = g_loss + cont_loss * 0.1 + 0.1*(similarity_loss_shape + similarity_loss_size + similarity_loss_orient + similarity_loss_xpos + similarity_loss_ypos)
             G_loss.backward()
 
             g_optimizer.step()
