@@ -48,7 +48,7 @@ class FactorVAEMetric(object):
 		train_loader = torch.utils.data.DataLoader(observations, batch_size=self.config['batch_size'], shuffle=True,drop_last = True)
 		representations_list = []
 		for images in train_loader:
-			representations, _ ,_ = model.encoder(images.cuda(self.device_id))
+			representations, _ = model.encoder(images.cuda(self.device_id))
 			representations_list.append(representations.data.cpu())
 		representations = torch.stack(representations_list)
 		representations = representations.view(-1,self.config['latent_dim'])
@@ -68,7 +68,7 @@ class FactorVAEMetric(object):
 		factors1[:, factor_index] = factors1[0, factor_index]
 		observation = self.data.sample_images_from_latent(factors1)
 
-		representations, _ ,_ = model.encoder(torch.from_numpy(observation))
+		representations, _  = model.encoder(torch.from_numpy(observation))
 		representations = representations.data.cpu().numpy()
 
 		## Rescaling

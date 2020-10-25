@@ -2,6 +2,8 @@ import time
 import os
 import random
 from utils import *
+import torchvision
+import matplotlib
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +28,9 @@ class Trainer(object):
         self.orientation_bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40)] + [1])
         self.xpos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32) ] + [1])
         self.ypos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32)] + [1])
+        # from torchvision.utils import save_image
+        # save_image(self.shape_template.view(-1, 1, 64, 64).type(torch.float32), 'ypos.png', padding=4, pad_value=1,
+        #            nrow=32)
 
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
@@ -77,32 +82,32 @@ class Trainer(object):
             positive_orient_samples ,negative_orient_samples = self.get_sample_oracle_orient_pairs(c_cond)
             positive_xpos_samples ,negative_xpos_samples= self.get_sample_oracle_xpos_pairs(c_cond)
             positive_ypos_samples ,negative_ypos_samples = self.get_sample_oracle_ypos_pairs(c_cond)
-            postive_pairs = torch.cat((positive_shape_samples,positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_xpos_samples),dim=0).to(self.device)
+            postive_pairs = torch.cat((positive_shape_samples,positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_ypos_samples),dim=0).to(self.device)
             negative_pairs = torch.cat((negative_shape_samples, negative_size_samples,negative_orient_samples,negative_xpos_samples,negative_ypos_samples),dim=0).to(self.device)
 
             fake_x = model.decoder(z)
             total_images = torch.cat((fake_x,postive_pairs,negative_pairs),dim=0)
-            latent_code, prob_fake , latent_similar = model.encoder(total_images)
+            latent_code, prob_fake  = model.encoder(total_images)
 
             g_loss = adversarial_loss(prob_fake[:64], label_real)
             cont_loss = criterionQ_con(c_cond, latent_code[:64])
-            similarity_loss_shape = similarity_loss(latent_similar[:64],latent_similar[64:128] ,latent_similar[384:448] )
-            similarity_loss_size = similarity_loss(latent_similar[:64],latent_similar[128:192] ,latent_similar[448:512] )
-            similarity_loss_orient = similarity_loss(latent_similar[:64], latent_similar[192:256],latent_similar[512:576] )
-            similarity_loss_xpos = similarity_loss(latent_similar[:64], latent_similar[256:320],latent_similar[576:640] )
-            similarity_loss_ypos = similarity_loss(latent_similar[:64], latent_similar[320:384],latent_similar[640:704] )
+            similarity_loss_shape = similarity_loss(latent_code[:64,0].view(-1,1),latent_code[64:128,0].view(-1,1) ,latent_code[384:448,0].view(-1,1) )
+            similarity_loss_size = similarity_loss(latent_code[:64,1].view(-1,1),latent_code[128:192,1].view(-1,1) ,latent_code[448:512,1].view(-1,1) )
+            similarity_loss_orient = similarity_loss(latent_code[:64,2].view(-1,1), latent_code[192:256,2].view(-1,1),latent_code[512:576,2].view(-1,1) )
+            similarity_loss_xpos = similarity_loss(latent_code[:64,3].view(-1,1), latent_code[256:320,3].view(-1,1),latent_code[576:640,3].view(-1,1) )
+            similarity_loss_ypos = similarity_loss(latent_code[:64,4].view(-1,1), latent_code[320:384,4].view(-1,1),latent_code[640:704,4].view(-1,1) )
             G_loss = g_loss + cont_loss * 0.1 + 0.1*(similarity_loss_shape + similarity_loss_size + similarity_loss_orient + similarity_loss_xpos + similarity_loss_ypos)
             G_loss.backward()
 
             g_optimizer.step()
 
             d_optimizer.zero_grad()
-            latent_code, prob_real, _ = model.encoder(images)
+            latent_code, prob_real= model.encoder(images)
             loss_real = adversarial_loss(prob_real, label_real)
             loss_real.backward()
 
             fake_x = model.decoder(z)
-            latent_code_gen, prob_fake , _ = model.encoder(fake_x.detach())
+            latent_code_gen, prob_fake  = model.encoder(fake_x.detach())
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
             loss_fake.backward()
