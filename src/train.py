@@ -77,7 +77,7 @@ class Trainer(object):
             positive_orient_samples ,negative_orient_samples = self.get_sample_oracle_orient_pairs(c_cond)
             positive_xpos_samples ,negative_xpos_samples= self.get_sample_oracle_xpos_pairs(c_cond)
             positive_ypos_samples ,negative_ypos_samples = self.get_sample_oracle_ypos_pairs(c_cond)
-            postive_pairs = torch.cat((positive_shape_samples,positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_xpos_samples),dim=0).to(self.device)
+            postive_pairs = torch.cat((positive_shape_samples,positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_ypos_samples),dim=0).to(self.device)
             negative_pairs = torch.cat((negative_shape_samples, negative_size_samples,negative_orient_samples,negative_xpos_samples,negative_ypos_samples),dim=0).to(self.device)
 
             fake_x = model.decoder(z)
@@ -91,7 +91,7 @@ class Trainer(object):
             similarity_loss_orient = similarity_loss(latent_similar[:64], latent_similar[192:256],latent_similar[512:576] )
             similarity_loss_xpos = similarity_loss(latent_similar[:64], latent_similar[256:320],latent_similar[576:640] )
             similarity_loss_ypos = similarity_loss(latent_similar[:64], latent_similar[320:384],latent_similar[640:704] )
-            G_loss = g_loss + cont_loss * 0.1 + 0.1*(similarity_loss_shape + similarity_loss_size + similarity_loss_orient + similarity_loss_xpos + similarity_loss_ypos)
+            G_loss = g_loss + cont_loss * 0.1 + 0.2*(similarity_loss_shape + similarity_loss_size + similarity_loss_orient + similarity_loss_xpos + similarity_loss_ypos)
             G_loss.backward()
 
             g_optimizer.step()
@@ -182,10 +182,7 @@ class Trainer(object):
         # c_cond_similar = torch.cat((shape_factor.view(-1,1), c_cond_new),dim=-1)
         latent = np.digitize(c_cond[:,0].cpu(),self.shape_bins)
         latent =  [x - 1 for x in latent.tolist()]
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 3)))
-            replace_list.append(replace_value)
+        replace_list = [random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 3))) for current_value in latent]
         # differ_shape = torch.FloatTensor([random.uniform(bins[x],bins[x+1]) for x in  replace_list]).view(-1,1).to(self.device)
         # c_cond_differ = torch.cat((differ_shape, c_cond[:,1:]),dim=-1)
         negative_samples = torch.stack([self.shape_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
@@ -200,10 +197,7 @@ class Trainer(object):
         latent = np.digitize(c_cond[:,1].cpu(),self.size_bins)
         latent =  [x - 1 for x in latent.tolist()]
 
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 6)))
-            replace_list.append(replace_value)
+        replace_list = [random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 6))) for current_value in latent]
         # differ_size = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
         # c_cond_differ = torch.cat((c_cond[:,:1] ,differ_size, c_cond[:, 2:]), dim=-1)
         negative_samples = torch.stack([self.size_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
@@ -217,12 +211,7 @@ class Trainer(object):
         # c_cond_similar = torch.cat((c_cond_new[:,:2], orient_factor.view(-1,1), c_cond_new[:,2:]),dim=-1)
         latent = np.digitize(c_cond[:,2].cpu(), self.orientation_bins)
         latent =  [x - 1 for x in latent.tolist()]
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 40)))
-            replace_list.append(replace_value)
-        # differ_orient = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        # c_cond_differ = torch.cat((c_cond[:,:2] ,differ_orient, c_cond[:, 3:]), dim=-1)
+        replace_list = [random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 40))) for current_value in latent]
         negative_samples = torch.stack([self.orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
         positive_samples = torch.stack([self.orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
         return positive_samples ,negative_samples
@@ -234,10 +223,7 @@ class Trainer(object):
         # c_cond_similar = torch.cat((c_cond_new[:,:3], xpos_factor.view(-1,1), c_cond_new[:,3:]),dim=-1)
         latent = np.digitize(c_cond[:,3].cpu(),self.xpos_bins)
         latent =  [x - 1 for x in latent.tolist()]
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 32)))
-            replace_list.append(replace_value)
+        replace_list = [random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 32))) for current_value in latent]
         # differ_xpos = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
         # c_cond_differ = torch.cat((c_cond[:,:3] ,differ_xpos, c_cond[:, 4:]), dim=-1)
         negative_samples = torch.stack([self.xpos_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
@@ -251,10 +237,7 @@ class Trainer(object):
         # c_cond_similar = torch.cat((c_cond_new[:,:4], ypos_factor.view(-1,1)),dim=-1)
         latent = np.digitize(c_cond[:,4].cpu(),self.ypos_bins)
         latent =  [x - 1 for x in latent.tolist()]
-        replace_list = []
-        for current_value in latent:
-            replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 32)))
-            replace_list.append(replace_value)
+        replace_list = [random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 32))) for current_value in latent]
         # differ_ypos = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
         # c_cond_differ = torch.cat((c_cond[:,:4] ,differ_ypos), dim=-1)
         negative_samples = torch.stack([self.ypos_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
