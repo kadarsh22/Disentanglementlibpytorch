@@ -52,7 +52,6 @@ class Trainer(object):
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
-
         for iter, images in enumerate(self.train_loader):
 
             # # CR Loss
@@ -74,8 +73,6 @@ class Trainer(object):
 
             z = torch.cat((z_noise, c_cond), dim=1)
 
-            ## decoder optimizatiom
-
             g_optimizer.zero_grad()
 
             fake_x = model.decoder(z)
@@ -91,7 +88,7 @@ class Trainer(object):
             loss_cr =  categorical_loss(cr_logits, fixed_idx)
 
 
-            G_loss = g_loss + (cont_loss * 0.05) + (loss_cr)
+            G_loss = g_loss + (cont_loss * 0.1) + (loss_cr)
             G_loss.backward()
 
             g_optimizer.step()
@@ -103,20 +100,17 @@ class Trainer(object):
             loss_real.backward()
 
             fake_x = model.decoder(z)
-            latent_code_gen, prob_fake = model.encoder.forward_no_spectral(fake_x)
+            latent_code_gen, prob_fake = model.encoder(fake_x.detach())
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
-            q_loss = criterionQ_con(c_cond, latent_code_gen)
-            loss = loss_fake + 0.05 * q_loss
-            loss.backward()
+            loss_fake.backward()
 
-            D_loss = loss_real + loss
             d_optimizer.step()
 
 
-            d_loss_summary = d_loss_summary + D_loss.item()
+            d_loss_summary = d_loss_summary + loss_real.item()
             g_loss_summary = g_loss_summary + G_loss.item()
-            info_loss_summary = info_loss_summary + q_loss.item() + cont_loss.item()
+            info_loss_summary = info_loss_summary  + cont_loss.item()
             cr_loss = cr_loss + loss_cr_new.item()
         #
         logging.info("Epochs  %d / %d Time taken %d sec  D_Loss: %.5f, G_Loss %.5F , CR Loss %.5F" % (

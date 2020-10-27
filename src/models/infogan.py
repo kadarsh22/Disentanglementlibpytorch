@@ -55,70 +55,59 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.dim_c_cont = dim_c_cont
         # Shared layers
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=4, stride=2, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=4, stride=2, padding=1)
-        self.conv3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, padding=1)
-        self.conv4 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=4, stride=2, padding=1)
-        self.linear1 = nn.Linear(in_features=64 * 4 * 4, out_features=128)
-        self.linear2 = nn.Linear(in_features=128, out_features=128)
-        self.linear3 = nn.Linear(in_features=128, out_features=self.dim_c_cont)
-
-        self.module_shared_spectral = nn.Sequential(
-            spectral_norm(self.conv1),
+        self.module_shared = nn.Sequential(
+            spectral_norm(nn.Conv2d(in_channels=1,
+                                    out_channels=32,
+                                    kernel_size=4,
+                                    stride=2,
+                                    padding=1)),
             nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            spectral_norm(self.conv2),
+            spectral_norm(nn.Conv2d(in_channels=32,
+                                    out_channels=32,
+                                    kernel_size=4,
+                                    stride=2,
+                                    padding=1)),
             nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            spectral_norm(self.conv3),
+            spectral_norm(nn.Conv2d(in_channels=32,
+                                    out_channels=64,
+                                    kernel_size=4,
+                                    stride=2,
+                                    padding=1)),
             nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            spectral_norm(self.conv4),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            Reshape(-1, 64 * 4 * 4),
-            spectral_norm(self.linear1),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-        )
-        self.module_shared_no_spectral = nn.Sequential(
-            self.conv1,
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            self.conv2,
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            self.conv3,
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            self.conv4,
+            spectral_norm(nn.Conv2d(in_channels=64,
+                                    out_channels=64,
+                                    kernel_size=4,
+                                    stride=2,
+                                    padding=1)),
             nn.LeakyReLU(negative_slope=0.2, inplace=True),
             Reshape(-1, 64 * 4 * 4),
-            self.linear1,
+            spectral_norm(nn.Linear(in_features=64 * 4 * 4, out_features=128)),
             nn.LeakyReLU(negative_slope=0.2, inplace=True),
         )
 
-        self.module_Q_no_spectral = nn.Sequential(
-            self.linear2,
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            self.linear3)
-
-        # Layer for Discriminating
-        self.module_D = nn.Sequential(nn.Linear(in_features=128, out_features=1), nn.Sigmoid())
-
-        self.module_Q_spectral = nn.Sequential(
-            spectral_norm(self.linear2),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            spectral_norm(self.linear3)
+        # Layer for Disciminating
+        self.module_D = nn.Sequential(
+            spectral_norm(nn.Linear(in_features=128, out_features=1)),
+            nn.Sigmoid()
         )
 
-    def forward_no_spectral(self, z):
-        z = z.type(torch.cuda.FloatTensor)
-        out = self.module_shared_no_spectral(z.view(-1, 1, 64, 64))
-        probability = self.module_D(out)
-        probability = probability.squeeze()
-        c_cont = self.module_Q_no_spectral(out)
-        return c_cont, probability
+        self.module_Q = nn.Sequential(
+            spectral_norm(nn.Linear(in_features=128, out_features=128)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+        )
+
+        self.latent_cont = spectral_norm(nn.Linear(
+            in_features=128, out_features=self.dim_c_cont))
+
 
     def forward(self, z):
         z = z.type(torch.cuda.FloatTensor)
-        out = self.module_shared_spectral(z.view(-1, 1, 64, 64))
+        out = self.module_shared(z.view(-1,1,64,64))
         probability = self.module_D(out)
         probability = probability.squeeze()
-        c_cont = self.module_Q_spectral(out)
-        return c_cont, probability
+        internal_Q = self.module_Q(out)
+        c_cont = self.latent_cont(internal_Q)
+        return c_cont,probability
 
 
 class Reshape(nn.Module):
@@ -128,7 +117,6 @@ class Reshape(nn.Module):
 
     def forward(self, x):
         return x.view(self.shape)
-
 
 class CRDiscriminator(nn.Module):
     '''Shared Part of Discriminator and Recognition Model'''
@@ -186,3 +174,5 @@ class InfoGan(object):
 
     def dummy(self):
         print('This is a dummy function')
+
+
