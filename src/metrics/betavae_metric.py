@@ -55,7 +55,7 @@ class BetaVAEMetric(object):
 
         # Select random coordinate to keep fixed.
         index = random_state.randint(low=self.config['low_beta_vae'],
-                                     high=6)  # 2-size ,3-orientation, 4-X-position 5 - Yposition
+                                     high=self.config['latent_dim'])  # 2-size ,3-orientation, 4-X-position 5 - Yposition
 
         # Sample two mini batches of latent variables.
         factors1 = self.data.sample_latent(batch_size)

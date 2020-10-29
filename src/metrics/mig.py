@@ -34,7 +34,7 @@ class MIG(object):
 
         entropy = self.discrete_entropy(discrete_ground_truth)
         sorted_m = np.sort(m, axis=0)[::-1]
-        dimension_wise_mig = np.divide((sorted_m[0, :] - sorted_m[1, :])[1:],entropy[1:])  # 1: skips the first latent code that is constant
+        dimension_wise_mig = np.divide((sorted_m[0, :] - sorted_m[1, :])[self.config['mig_start']:],entropy[self.config['mig_start']:])  # 1: skips the first latent code that is constant
         logging.info(dimension_wise_mig)
         score_dict["discrete_mig"] = np.mean(dimension_wise_mig[self.config['mig_start']:])
         return score_dict

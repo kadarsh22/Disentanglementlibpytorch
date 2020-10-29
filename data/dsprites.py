@@ -3,78 +3,114 @@ import torch
 import torchvision
 import os
 import matplotlib.pyplot as plt
+import PIL
 
 SCREAM_PATH = "/home/adarsh/Documents/data/scream/scream.jpg"
 dsprites_path = "/home/adarsh/PycharmProjects/Disentaglement/data/dsprites/dsprites_ndarray_co1sh3sc6or40x32y32_64x64" \
-				".npz"
+                ".npz"
 
 
 class DSprites(object):
-	def __init__(self, config):
-		self.config = config
-		self.exp_name = config['experiment_name']
-		self.data_shape = [64, 64, 1]  # Load the data so that we can sample from it.
-		with open(dsprites_path, "rb") as data_file:
-			# Data was saved originally using python2, so we need to set the encoding.
-			data = np.load(dsprites_path, encoding="latin1", allow_pickle=True)
+    def __init__(self, config):
+        self.config = config
+        self.exp_name = config['experiment_name']
+        self.data_shape = [64, 64, 1]  # Load the data so that we can sample from it.
+        with open(dsprites_path, "rb") as data_file:
+            # Data was saved originally using python2, so we need to set the encoding.
+            data = np.load(dsprites_path, encoding="latin1", allow_pickle=True)
 
-		metadata = data['metadata'][()]
-		self.latents_sizes = metadata['latents_sizes']
+        metadata = data['metadata'][()]
+        self.latents_sizes = metadata['latents_sizes']
 
-		# if full data load the entire dataset else only load images corresponding to one shape
-		if config['full_data']:
-			self.images = np.array(data["imgs"])
-			self.latents_values = data['latents_values']
-			self.latents_classes = data['latents_classes']
-		else:
-			self.images = np.array(data["imgs"])[:32 * 32 * 40 * 6]
-			self.latents_values = data['latents_values'][:32 * 32 * 40 * 6]
-			self.latents_classes = data['latents_classes'][:32 * 32 * 40 * 6]
-			self.latents_sizes[1] = 1
+        self.images = np.array(data["imgs"])
+        self.latents_values = data['latents_values']
+        self.latents_classes = data['latents_classes']
+        self.latents_bases = np.concatenate((self.latents_sizes[::-1].cumprod()[::-1][1:], np.array([1, ])))
+        self.num_factors = 6
+        # self.show_images_grid()
 
-		self.latents_bases = np.concatenate((self.latents_sizes[::-1].cumprod()[::-1][1:], np.array([1, ])))
-		self.num_factors = 6
-		# self.show_images_grid()
+    def show_images_grid(self, nrows=10):
+        path = os.getcwd() + f'/results/{self.exp_name}' + '/visualisations/input.jpeg'
+        index = np.random.choice(self.images.shape[0], nrows * nrows, replace=False)
+        batch_tensor = torch.from_numpy(self.images[index])
+        grid_img = torchvision.utils.make_grid(batch_tensor.view(-1, 1, 64, 64), nrow=10, padding=5, pad_value=1)
+        grid = grid_img.permute(1, 2, 0).type(torch.FloatTensor)
+        plt.imsave(path, grid.numpy())
 
-	def show_images_grid(self, nrows=10):
-		path = os.getcwd() + f'/results/{self.exp_name}' + '/visualisations/input.jpeg'
-		index = np.random.choice(self.images.shape[0], nrows * nrows, replace=False)
-		batch_tensor = torch.from_numpy(self.images[index])
-		grid_img = torchvision.utils.make_grid(batch_tensor.view(-1, 1, 64, 64), nrow=10, padding=5, pad_value=1)
-		grid = grid_img.permute(1, 2, 0).type(torch.FloatTensor)
-		plt.imsave(path, grid.numpy())
+    def sample(self, num):
+        latents_sampled = self.sample_latent(size=num)
+        indices_sampled = self.latent_to_index(latents_sampled)
+        imgs_sampled = self.images[indices_sampled]
+        latents_sampled = self.latents_values[indices_sampled]
+        return latents_sampled, imgs_sampled
 
-	def sample(self, num):
-		latents_sampled = self.sample_latent(size=num)
-		indices_sampled = self.latent_to_index(latents_sampled)
-		imgs_sampled = self.images[indices_sampled]
-		latents_sampled = self.latents_values[indices_sampled]
-		return latents_sampled, imgs_sampled
+    def sample_latent(self, size=1):
+        """
+        Generate a vector with size of ground truth factors and random fill each column with values from range
+        :param size:
+        :return: latents
+        """
 
-	def sample_latent(self, size=1):
-		"""
-		Generate a vector with size of ground truth factors and random fill each column with values from range
-		:param size:
-		:return: latents
-		"""
+        samples = np.zeros((size, self.latents_sizes.size))
+        for lat_i, lat_size in enumerate(self.latents_sizes):
+            samples[:, lat_i] = np.random.randint(lat_size, size=size)
 
-		samples = np.zeros((size, self.latents_sizes.size))
-		for lat_i, lat_size in enumerate(self.latents_sizes):
-			samples[:, lat_i] = np.random.randint(lat_size, size=size)
+        return samples
 
-		return samples
+    def sample_images_from_latent(self, latent):
+        indices_sampled = self.latent_to_index(latent)
+        imgs_sampled = self.images[indices_sampled]
+        return imgs_sampled
 
-	def sample_images_from_latent(self, latent):
-		indices_sampled = self.latent_to_index(latent)
-		imgs_sampled = self.images[indices_sampled]
-		return imgs_sampled
+    def latent_to_index(self, latents):
+        return np.dot(latents, self.latents_bases).astype(int)
 
-	def latent_to_index(self, latents):
-		return np.dot(latents, self.latents_bases).astype(int)
+    def sample_latent_values(self, latents_sampled):
 
-	def sample_latent_values(self, latents_sampled):
+        indices_sampled = self.latent_to_index(latents_sampled)
+        # imgs_sampled = self.images[indices_sampled]
+        latent_values = self.latents_values[indices_sampled]
+        return latent_values
 
-		indices_sampled = self.latent_to_index(latents_sampled)
-		# imgs_sampled = self.images[indices_sampled]
-		latent_values = self.latents_values[indices_sampled]
-		return latent_values
+    def sample_observations_from_factors_no_color(self, factors, random_state):
+        """Sample a batch of observations X given a batch of factors Y."""
+        all_factors = self.state_space.sample_all_factors(factors, random_state)
+        indices = np.array(np.dot(all_factors, self.factor_bases), dtype=np.int64)
+        return np.expand_dims(self.images[indices].astype(np.float32), axis=3)
+
+class ScreamDSprites(DSprites):
+  """Scream DSprites.
+  This data set is the same as the original DSprites data set except that when
+  sampling the observations X, a random patch of the Scream image is sampled as
+  the background and the sprite is embedded into the image by inverting the
+  color of the sampled patch at the pixels of the sprite.
+  The ground-truth factors of variation are (in the default setting):
+  0 - shape (3 different values)
+  1 - scale (6 different values)
+  2 - orientation (40 different values)
+  3 - position x (32 different values)
+  4 - position y (32 different values)
+  """
+
+  def __init__(self, latent_factor_indices=None):
+    DSprites.__init__(self, latent_factor_indices)
+    self.data_shape = [64, 64, 3]
+    with open(SCREAM_PATH, "rb") as f:
+      scream = PIL.Image.open(f)
+      scream.thumbnail((350, 274, 3))
+      self.scream = np.array(scream) * 1. / 255.
+
+  def sample_observations_from_factors(self, factors, random_state):
+    no_color_observations = self.sample_observations_from_factors_no_color(
+        factors, random_state)
+    observations = np.repeat(no_color_observations, 3, axis=3)
+
+    for i in range(observations.shape[0]):
+      x_crop = random_state.randint(0, self.scream.shape[0] - 64)
+      y_crop = random_state.randint(0, self.scream.shape[1] - 64)
+      background = (self.scream[x_crop:x_crop + 64, y_crop:y_crop + 64] +
+                    random_state.uniform(0, 1, size=3)) / 2.
+      mask = (observations[i] == 1)
+      background[mask] = 1 - background[mask]
+      observations[i] = background
+    return observations

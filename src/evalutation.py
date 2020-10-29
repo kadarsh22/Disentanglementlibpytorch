@@ -19,7 +19,6 @@ class Evaluator(object):
         self.config = config
         self.device = torch.device('cuda:' + str(config['device_id']))
         self.metric_eval = {'beta_vae': [], 'factor_vae': [], 'mig': []}
-        self.mode = config['full_data']
 
     def evaluate_model(self, model, epoch):
         if self.config['model_arch'] == 'gan':

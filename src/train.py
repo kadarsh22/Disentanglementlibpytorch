@@ -66,7 +66,7 @@ class Trainer(object):
             g_loss = adversarial_loss(prob_fake, label_real)
             cont_loss = criterionQ_con(c_cond, latent_code)
 
-            G_loss = g_loss + cont_loss * 0.1
+            G_loss = g_loss + cont_loss * self.config['lambda']
             G_loss.backward()
 
             g_optimizer.step()
