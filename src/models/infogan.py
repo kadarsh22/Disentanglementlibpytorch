@@ -93,10 +93,18 @@ class Discriminator(nn.Module):
 
         self.module_Q = nn.Sequential(
             spectral_norm(nn.Linear(in_features=128, out_features=128)),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True)
         )
 
         self.latent_cont = spectral_norm(nn.Linear(
+            in_features=128, out_features=self.dim_c_cont))
+
+        self.module_S = nn.Sequential(
+            spectral_norm(nn.Linear(in_features=128, out_features=128)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        )
+
+        self.latent_similar = spectral_norm(nn.Linear(
             in_features=128, out_features=self.dim_c_cont))
 
 
@@ -107,7 +115,9 @@ class Discriminator(nn.Module):
         probability = probability.squeeze()
         internal_Q = self.module_Q(out)
         c_cont = self.latent_cont(internal_Q)
-        return c_cont,probability
+        internal_S = self.module_S(out)
+        similarity = self.latent_similar(internal_S)
+        return c_cont,probability,similarity
 
 
 class Reshape(nn.Module):

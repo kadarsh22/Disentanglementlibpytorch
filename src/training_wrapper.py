@@ -44,7 +44,7 @@ def run_training_wrapper(configuration, data, perf_logger):
 				model.encoder.eval()
 				model.decoder.eval()
 			metrics = evaluator.evaluate_model(model, i)
-			z, _ = model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))
+			z, _ ,_= model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))
 			perf_logger.start_monitoring("Latent Traversal Visualisations")
 			visualise_results.visualise_latent_traversal(z, model.decoder, i)
 			perf_logger.stop_monitoring("Latent Traversal Visualisations")

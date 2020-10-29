@@ -2,6 +2,8 @@ import time
 import os
 import random
 from utils import *
+import torchvision
+import matplotlib
 
 log = logging.getLogger(__name__)
 
@@ -15,6 +17,15 @@ class Trainer(object):
         self.train_loader = self._get_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
+        self.angle_template = torch.from_numpy(self.data.sample_images_from_index([0] + [x for x in range(27,1080,27)]))
+        self.radius_template =  torch.from_numpy(self.data.sample_images_from_index([x for x in range(27)]))
+
+        # from torchvision.utils import save_image
+        # save_image(self.radius_template.view(-1, 1, 64, 64).type(torch.float32), 'ypos.png', padding=4, pad_value=1,
+        #            nrow=27)
+        self.angle_bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40)] +[1])
+        self.radius_bins = np.array([-1] + [-1 + 2*x/27 for x in range(1,27)] + [1])
+
 
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
@@ -46,6 +57,7 @@ class Trainer(object):
 
         adversarial_loss = torch.nn.BCELoss()
         criterionQ_con = log_gaussian()
+        similarity_loss = torch.nn.TripletMarginLoss()
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
@@ -60,24 +72,31 @@ class Trainer(object):
 
             g_optimizer.zero_grad()
 
+            positive_angle_samples ,negative_angle_samples = self.get_sample_oracle_angle_pairs(c_cond)
+            positive_radius_samples ,negative_radius_samples = self.get_sample_oracle_radius_pairs(c_cond)
+            postive_pairs = torch.cat((positive_angle_samples,positive_radius_samples),dim=0).to(self.device)
+            negative_pairs = torch.cat((negative_angle_samples, negative_radius_samples),dim=0).to(self.device)
+
             fake_x = model.decoder(z)
-            latent_code, prob_fake = model.encoder(fake_x)
+            total_images = torch.cat((fake_x,postive_pairs,negative_pairs),dim=0)
+            latent_code, prob_fake , latent_similar = model.encoder(total_images)
 
-            g_loss = adversarial_loss(prob_fake, label_real)
-            cont_loss = criterionQ_con(c_cond, latent_code)
-
-            G_loss = g_loss + cont_loss * self.config['lambda']
+            g_loss = adversarial_loss(prob_fake[:self.config['batch_size']], label_real)
+            cont_loss = criterionQ_con(c_cond, latent_code[:self.config['batch_size']])
+            similarity_loss_angle = similarity_loss(latent_similar[:self.config['batch_size']],latent_similar[30:60] ,latent_similar[90:120] )
+            similarity_loss_radius = similarity_loss(latent_similar[:self.config['batch_size']],latent_similar[60:90] ,latent_similar[120:150] )
+            G_loss = g_loss + cont_loss * self.config['lambda'] + 0.2*(similarity_loss_angle + similarity_loss_radius)
             G_loss.backward()
 
             g_optimizer.step()
 
             d_optimizer.zero_grad()
-            latent_code, prob_real = model.encoder(images)
+            latent_code, prob_real, _ = model.encoder(images)
             loss_real = adversarial_loss(prob_real, label_real)
             loss_real.backward()
 
             fake_x = model.decoder(z)
-            latent_code_gen, prob_fake = model.encoder(fake_x.detach())
+            latent_code_gen, prob_fake , _ = model.encoder(fake_x.detach())
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
             loss_fake.backward()
@@ -89,12 +108,13 @@ class Trainer(object):
             g_loss_summary = g_loss_summary + G_loss.item()
             info_loss_summary = info_loss_summary +  cont_loss.item()
         #
-        logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F F" % (
+        logging.info("Epochs  %d / %d Time taken %d sec  G_Loss: %.5f, D_Loss %.5F Info_Loss %.5F Oracle_Loss %.5F" % (
             epoch, self.config['epochs'], time.time() - start_time,
-            g_loss_summary / len(self.train_loader), d_loss_summary / len(self.train_loader), info_loss_summary / len(self.train_loader)))
+            g_loss_summary / len(self.train_loader), d_loss_summary / len(self.train_loader), info_loss_summary / len(self.train_loader) ,oracle_loss_summary / len(self.train_loader)))
         self.train_hist_gan['d_loss'].append(d_loss_summary/ len(self.train_loader))
         self.train_hist_gan['g_loss'].append(g_loss_summary/ len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
+
         return model,self.train_hist_gan, (d_optimizer, g_optimizer)
 
     @staticmethod
@@ -111,3 +131,36 @@ class Trainer(object):
         images = self.data.images
         train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
         return train_loader
+
+
+    def get_sample_oracle_radius_pairs(self , c_cond):
+        # shape_factor = c_cond[:, 0]
+        # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
+        #                     device=self.device) * 2 - 1
+        # c_cond_similar = torch.cat((shape_factor.view(-1,1), c_cond_new),dim=-1)
+        latent = np.digitize(c_cond[:,0].cpu(),self.radius_bins)
+        latent =  [x - 1 for x in latent.tolist()]
+        replace_list = [random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 27))) for current_value in latent]
+        # differ_shape = torch.FloatTensor([random.uniform(bins[x],bins[x+1]) for x in  replace_list]).view(-1,1).to(self.device)
+        # c_cond_differ = torch.cat((differ_shape, c_cond[:,1:]),dim=-1)
+        negative_samples = torch.stack([self.radius_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
+        positive_samples = torch.stack([self.radius_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
+        return positive_samples ,negative_samples
+
+    def get_sample_oracle_angle_pairs(self , c_cond):
+        # size_factor = c_cond[:, 1
+        # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
+        #                     device=self.device) * 2 - 1
+        # c_cond_similar = torch.cat((c_cond_new[:,:1], size_factor.view(-1,1), c_cond_new[:,1:]),dim=-1)
+        latent = np.digitize(c_cond[:,1].cpu(),self.angle_bins)
+        latent =  [x - 1 for x in latent.tolist()]
+
+        replace_list = [random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 40))) for current_value in latent]
+        # differ_size = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
+        # c_cond_differ = torch.cat((c_cond[:,:1] ,differ_size, c_cond[:, 2:]), dim=-1)
+        negative_samples = torch.stack([self.angle_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
+        positive_samples = torch.stack([self.angle_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
+        return positive_samples ,negative_samples
+
+
+

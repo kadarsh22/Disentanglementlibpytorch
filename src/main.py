@@ -9,16 +9,11 @@ from logger import PerfomanceLogger
 
 
 def main(configuration):
-	if configuration['dataset'] == 'dsprites' or 'scream_dsprites':
-		configuration['low_factor_vae'] = 1
-		configuration['low_beta_vae'] = 1
-		configuration['mig_entropy_start'] = 1
-		configuration['mig_start'] = 0
-	else:
-		configuration['low_factor_vae'] = 0
-		configuration['low_beta_vae'] = 0
-		configuration['mig_entropy_start'] = 0
-		configuration['mig_start'] = 0
+
+	configuration['low_factor_vae'] = 0
+	configuration['low_beta_vae'] = 0
+	configuration['mig_entropy_start'] = 0
+	configuration['mig_start'] = 0
 
 	Trainer.set_seed(configuration['random_seed'])
 	data = get_data_loader(configuration)

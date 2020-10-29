@@ -23,10 +23,10 @@ parser.add_argument('--model_arch', type=str, default='gan', choices=['vae', 'ga
 parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_vae', 'factor_vae', 'infogan',
                                                                           'betavae_cnn'], help='architecture of '
                                                                                                'model')
-parser.add_argument('--dataset', type=str, default='scream_dsprites', choices=['cdsprites','celeba', 'scream_dsprites', 'coloredsprites','3dteapots'
+parser.add_argument('--dataset', type=str, default='cdsprites', choices=['cdsprites','celeba', 'scream_dsprites', 'coloredsprites','3dteapots'
                                                                         'cars3d'], help='name of the dataset')
 parser.add_argument('--epochs', type=int, default=8000, help='The number of epochs to run')
-parser.add_argument('--logging_freq', type=int, default=1, help='Frequency at which result  should be logged')
+parser.add_argument('--logging_freq', type=int, default=500, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=500, help='Frequency at which result  should be logged')
 parser.add_argument('--ablation', type=bool, default=False, help='whether to run in ablation study mode or not')
 parser.add_argument('--evaluation', type=bool, default=False, help='whether to run in evaluation mode or not')

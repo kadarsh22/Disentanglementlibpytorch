@@ -19,8 +19,6 @@ class CircularDSprites(object):
 
 		metadata = data['metadata'][()]
 		self.latents_sizes = metadata['latents_sizes']
-
-		# if full data load the entire dataset else only load images corresponding to one shape
 		self.images = np.array(data["imgs"]).reshape(-1, 64, 64, 1).astype(np.float)
 		self.latents_values = data['latents_values']
 		# self.latents_classes = data['latents_classes']
@@ -61,6 +59,10 @@ class CircularDSprites(object):
 	def sample_images_from_latent(self, latent):
 		indices_sampled = self.latent_to_index(latent)
 		imgs_sampled = self.images[indices_sampled]
+		return imgs_sampled
+
+	def sample_images_from_index(self, index):
+		imgs_sampled = self.images[index]
 		return imgs_sampled
 
 	def latent_to_index(self, latents):

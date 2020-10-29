@@ -69,8 +69,8 @@ class BetaVAEMetric(object):
         observation2 = self.data.sample_images_from_latent(factors2)
 
         #   Compute representations based on the observations.
-        representation1, _ = model.encoder(torch.from_numpy(observation1).cuda(self.device_id))
-        representation2, _ = model.encoder(torch.from_numpy(observation2).cuda(self.device_id))
+        representation1, _ ,_= model.encoder(torch.from_numpy(observation1).cuda(self.device_id))
+        representation2, _  ,_= model.encoder(torch.from_numpy(observation2).cuda(self.device_id))
         representation1 = representation1.data.cpu().numpy()
         representation2 = representation2.data.cpu().numpy()
 
