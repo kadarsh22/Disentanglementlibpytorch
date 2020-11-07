@@ -27,6 +27,17 @@ def truncated_normal_(tensor, mean=0, std=1.0):
     tensor.data.mul_(std).add_(mean)
     return tensor
 
+def permute_dims(z):
+    assert z.dim() == 2
+
+    B, _ = z.size()
+    perm_z = []
+    for z_j in z.split(1, 1):
+        perm = torch.randperm(B).to(z.device)
+        perm_z_j = z_j[perm]
+        perm_z.append(perm_z_j)
+
+    return torch.cat(perm_z, 1)
 
 class log_gaussian:
 

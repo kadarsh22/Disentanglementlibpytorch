@@ -39,45 +39,50 @@ class Trainer(object):
     def train_gan(self, model, optimizer, epoch):
         d_optimizer = optimizer[0]
         g_optimizer = optimizer[1]
+        cr_optimizer = optimizer[2]
         start_time = time.time()
         d_loss_summary, g_loss_summary, info_loss_summary ,oracle_loss_summary = 0, 0, 0 , 0
         model.encoder.to(self.device)
         model.decoder.to(self.device)
+        model.cr_disc.to(self.device)
 
         adversarial_loss = torch.nn.BCELoss()
         criterionQ_con = log_gaussian()
+        categorical_loss = torch.nn.CrossEntropyLoss()
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
-        for iter, images in enumerate(self.train_loader):
+        for iter, (images,labels) in enumerate(self.train_loader):
             images = images.type(torch.FloatTensor).to(self.device)
-            z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
-                                 device=self.device) * 2 - 1
-            c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
-                                device=self.device) * 2 - 1
 
-            z = torch.cat((z_noise, c_cond), dim=1)
+            z , idx = self._sample()
 
             g_optimizer.zero_grad()
 
             fake_x = model.decoder(z)
-            latent_code, prob_fake = model.encoder(fake_x)
+            prob_fake, disc_logits, latent_code, c_cont_var = model.encoder(fake_x)
+
+                # Calculate loss for discrete latent code
+            target = torch.LongTensor(idx).to(self.device)
+            loss_c_disc = 0
+            for j in range(1):
+                loss_c_disc += categorical_loss(disc_logits[:, j, :], target[j, :])
 
             g_loss = adversarial_loss(prob_fake, label_real)
-            cont_loss = criterionQ_con(c_cond, latent_code)
+            cont_loss = criterionQ_con(z[:, self.config['noise_dim']+self.config['discrete_dim']:], latent_code)
 
-            G_loss = g_loss + cont_loss * self.config['lambda']
+            G_loss = g_loss + cont_loss.sum() * self.config['lambda'] + loss_c_disc
             G_loss.backward()
 
             g_optimizer.step()
 
             d_optimizer.zero_grad()
-            latent_code, prob_real = model.encoder(images)
+            prob_real ,_ ,_ ,_ = model.encoder(images)
             loss_real = adversarial_loss(prob_real, label_real)
             loss_real.backward()
 
             fake_x = model.decoder(z)
-            latent_code_gen, prob_fake = model.encoder(fake_x.detach())
+            prob_fake ,_ ,_,_ = model.encoder(fake_x.detach())
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
             loss_fake.backward()
@@ -95,7 +100,7 @@ class Trainer(object):
         self.train_hist_gan['d_loss'].append(d_loss_summary/ len(self.train_loader))
         self.train_hist_gan['g_loss'].append(g_loss_summary/ len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
-        return model,self.train_hist_gan, (d_optimizer, g_optimizer)
+        return model,self.train_hist_gan, (d_optimizer, g_optimizer,cr_optimizer)
 
     @staticmethod
     def set_seed(seed):
@@ -107,7 +112,28 @@ class Trainer(object):
         random.seed(seed)
         os.environ['PYTHONHASHSEED'] = str(seed)
 
+    def _sample(self):
+        z = torch.randn(self.config['batch_size'], self.config['noise_dim'], device=self.device)
+        idx = np.zeros((self.config['discrete_dim'], self.config['batch_size']))
+        c_disc = torch.zeros(self.config['batch_size'], 1, self.config['discrete_dim'], device=self.device)
+        for i in range(1):
+            idx[i] = np.random.randint(self.config['discrete_dim'], size=self.config['batch_size'])
+            c_disc[torch.arange(0, self.config['batch_size']), i, idx[i]] = 1.0
+
+        c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], device=self.device) * 2 - 1
+
+        for i in range(1):
+            z = torch.cat((z, c_disc[:, i, :].squeeze()), dim=1)
+
+        z = torch.cat((z, c_cond), dim=1)
+        return z ,idx
+
+
     def _get_training_data(self):
-        images = self.data.images
-        train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
-        return train_loader
+        if self.config['dataset'] != 'fashion_mnist':
+            images = self.data.images
+            train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
+            return train_loader
+        else:
+            train_loader = torch.utils.data.DataLoader(self.data, batch_size=self.config['batch_size'], shuffle=True)
+            return train_loader
