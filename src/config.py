@@ -25,7 +25,7 @@ parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_
                                                                                                'model')
 parser.add_argument('--dataset', type=str, default='fashion_mnist', choices=['dsprites','celeba', 'scream_dsprites', 'coloredsprites','3dteapots'
                                                                         'cars3d','fashion_mnist'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=30, help='The number of epochs to run')
+parser.add_argument('--epochs', type=int, default=100, help='The number of epochs to run')
 parser.add_argument('--discrete_dim', type=int, default=10, help='Frequency at which result  should be logged')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')

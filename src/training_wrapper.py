@@ -44,10 +44,13 @@ def run_training_wrapper(configuration, data, perf_logger):
 				model.encoder.eval()
 				model.decoder.eval()
 			metrics = evaluator.evaluate_model(model, i)
-			z, _ = model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))
-			perf_logger.start_monitoring("Latent Traversal Visualisations")
-			visualise_results.visualise_latent_traversal(z, model.decoder, i)
-			perf_logger.stop_monitoring("Latent Traversal Visualisations")
+			if configuration['dataset'] == 'fashion_mnist':
+				visualise_results.generate_image_grid(model.decoder,i)
+			else:
+				z, _ = model.encoder(torch.from_numpy(data.images[0]).type(torch.FloatTensor))
+				perf_logger.start_monitoring("Latent Traversal Visualisations")
+				visualise_results.visualise_latent_traversal(z, model.decoder, i)
+				perf_logger.stop_monitoring("Latent Traversal Visualisations")
 
 	perf_logger.start_monitoring("Saving Results")
 	saver.save_results(metrics, 'metrics')

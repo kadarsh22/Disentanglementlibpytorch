@@ -54,7 +54,7 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     '''Shared Part of Discriminator and Recognition Model'''
 
-    def __init__(self, n_c_disc , dim_c_disc, dim_c_cont):
+    def __init__(self, n_c_disc, dim_c_disc, dim_c_cont):
         super(Discriminator, self).__init__()
         self.dim_c_disc = dim_c_disc
         self.dim_c_cont = dim_c_cont
@@ -94,26 +94,28 @@ class Discriminator(nn.Module):
 
         self.latent_disc = nn.Sequential(
             nn.Linear(
-                in_features=128, out_features=10),
-            Reshape(-1, 1, 10),
-            nn.Softmax(dim=2)
+                in_features=128, out_features=self.n_c_disc*self.dim_c_disc),
+            Reshape(-1, self.n_c_disc, self.dim_c_disc),
         )
 
-        self.latent_cont_mu = nn.Linear(
-            in_features=128, out_features=5)
 
-        self.latent_cont_var = nn.Linear(
-            in_features=128, out_features=5)
 
     def forward(self, z):
         out = self.module_shared(z)
         probability = self.module_D(out)
         probability = probability.squeeze()
         internal_Q = self.module_Q(out)
-        c_cont_mu = self.latent_cont_mu(internal_Q)
-        c_cont_var = torch.exp(self.latent_cont_var(internal_Q))
         c_disc_logits = self.latent_disc(internal_Q)
-        return probability, c_disc_logits, c_cont_mu, c_cont_var
+        return probability, c_disc_logits
+
+
+class Reshape(nn.Module):
+    def __init__(self, *args):
+        super(Reshape, self).__init__()
+        self.shape = args
+
+    def forward(self, x):
+        return x.view(self.shape)
 
 class CRDiscriminator(nn.Module):
     def __init__(self, z_dim):
@@ -151,9 +153,9 @@ class InfoGan(object):
     def __init__(self, config):
         super(InfoGan, self).__init__()
 
-        self.decoder = Generator(dim_z=config['noise_dim'],n_c_disc=1,dim_c_disc=config['discrete_dim'], dim_c_cont=config['latent_dim'])
-        self.encoder = Discriminator(n_c_disc=1,dim_c_disc = config['discrete_dim'],dim_c_cont=config['latent_dim'])
-        self.cr_disc = CRDiscriminator(z_dim=5)
+        self.decoder = Generator(dim_z=62,n_c_disc=1,dim_c_disc=10,dim_c_cont=0)
+        self.encoder = Discriminator(dim_c_disc=10,dim_c_cont=0,n_c_disc=1)
+        # self.cr_disc = CRDiscriminator(z_dim=5)
 
     def dummy(self):
         print('This is a dummy function')

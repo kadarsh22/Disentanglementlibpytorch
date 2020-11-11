@@ -25,6 +25,23 @@ class Visualiser(object):
 		path = file_location + str(plot_type) + '.jpeg'
 		plt.savefig(path)
 
+	def generate_image_grid(self,decoder, epoch):
+		latent_disc = torch.eye(10).view(-1,10,10)
+		latent = latent_disc.repeat(10,1,1)
+		latent = latent.view(-1,10).cuda()
+		z = torch.randn(100, 62).cuda()
+		generate_images = decoder(torch.cat((z,latent),dim=1))
+		file_location = os.path.dirname(
+			os.getcwd()) + f'/results/{self.experiment_name}' + '/visualisations/latent_traversal/'
+		if not os.path.exists(file_location):
+			os.makedirs(file_location)
+		path = file_location + str(epoch) + '.jpeg'
+		grid_img = torchvision.utils.make_grid(generate_images[0:100], nrow=10)
+		plt.imshow(grid_img.permute(1, 2, 0).cpu().data)
+		plt.savefig(path)
+
+
+
 	def visualise_latent_traversal(self, initial_rep, decoder, epoch_num):
 		interval_start = self.config['interval_start']
 		interval = (2*(interval_start))/10
