@@ -39,10 +39,12 @@ class Trainer(object):
     def train_gan(self, model, optimizer, epoch):
         d_optimizer = optimizer[0]
         g_optimizer = optimizer[1]
+        cr_optimizer = optimizer[2]
         start_time = time.time()
         d_loss_summary, g_loss_summary, info_loss_summary ,oracle_loss_summary = 0, 0, 0 , 0
         model.encoder.to(self.device)
         model.decoder.to(self.device)
+        model.cr_disc.to(self.device)
 
         adversarial_loss = torch.nn.BCELoss()
         categorical_loss = torch.nn.CrossEntropyLoss()
@@ -50,6 +52,28 @@ class Trainer(object):
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
         for iter, (images,labels) in enumerate(self.train_loader):
+            cr_optimizer.zero_grad()
+
+            z_noise_one = torch.rand(self.config['batch_size'], 62, dtype=torch.float32,
+                                     device=self.device) * 2 - 1
+            z_noise_two = torch.rand(self.config['batch_size'], 62, dtype=torch.float32,
+                                     device=self.device) * 2 - 1
+
+            fixed_idx = np.random.randint(low=0,high=10)
+            target = torch.LongTensor([fixed_idx]*self.config['batch_size']).cuda()
+            y_disc_ = torch.zeros((self.config['batch_size']*2,10)).cuda()
+            y_disc_[:,fixed_idx] = 1
+            inp_vec_one = torch.cat((z_noise_one, y_disc_[:self.config['batch_size']]), dim=1)
+            inp_vec_two = torch.cat((z_noise_two, y_disc_[self.config['batch_size']:]), dim=1)
+            inp_vec = torch.cat((inp_vec_one,inp_vec_two),dim=0)
+            idx_fixed_data = model.decoder(inp_vec)
+            cr_logits = model.cr_disc(idx_fixed_data[:self.config['batch_size']].detach(),
+                                      idx_fixed_data[self.config['batch_size']:].detach())
+            loss_cr_new = categorical_loss(cr_logits.view(-1,10), target)
+            loss_cr_new.backward()
+            cr_optimizer.step()
+
+
             images = images.type(torch.FloatTensor).to(self.device)
             z = torch.randn(self.config['batch_size'], 62, device=self.device)
             y_disc_ = torch.from_numpy(np.random.multinomial(1, 10* [float(1.0 / 10)], size=[self.config['batch_size']])).type(torch.FloatTensor).to(self.device)
@@ -86,10 +110,22 @@ class Trainer(object):
             loss_G = adversarial_loss(prob_fake, label_real)
             loss_c_disc = categorical_loss(disc_logits.view(-1,10),targets)
 
-            loss_info = loss_G + loss_c_disc
+            fixed_idx = np.random.randint(low=0, high=10)
+            target = torch.LongTensor([fixed_idx] * self.config['batch_size']).cuda()
+            z = torch.randn(self.config['batch_size'] * 2, 62, device=self.device)
+            y_disc_ = torch.zeros((self.config['batch_size'] * 2, 10)).cuda()
+            y_disc_[:, fixed_idx] = 1
+            inp_vec = torch.cat((z, y_disc_), dim=1)
+            idx_fixed_data = model.decoder(inp_vec)
+            cr_logits = model.cr_disc(idx_fixed_data[:self.config['batch_size']],
+                                      idx_fixed_data[self.config['batch_size']:])
+            loss_cr =  categorical_loss(cr_logits.view(-1,10), target)
+
+            loss_info = loss_G + loss_c_disc + 2*loss_cr
 
             loss_info.backward()
             g_optimizer.step()
+
 
 
             d_loss_summary = d_loss_summary + loss_D.item()
@@ -102,7 +138,7 @@ class Trainer(object):
         self.train_hist_gan['d_loss'].append(d_loss_summary/ len(self.train_loader))
         self.train_hist_gan['g_loss'].append(g_loss_summary/ len(self.train_loader))
         self.train_hist_gan['info_loss'].append(info_loss_summary/ len(self.train_loader))
-        return model,self.train_hist_gan, (d_optimizer, g_optimizer)
+        return model,self.train_hist_gan, (d_optimizer, g_optimizer,cr_optimizer)
 
     @staticmethod
     def set_seed(seed):

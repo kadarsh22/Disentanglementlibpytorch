@@ -118,35 +118,52 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 class CRDiscriminator(nn.Module):
-    def __init__(self, z_dim):
+    '''Shared Part of Discriminator and Recognition Model'''
+
+    def __init__(self, dim_c_cont):
         super(CRDiscriminator, self).__init__()
-        self.z_dim = z_dim
-        self.net = nn.Sequential(
-            nn.Linear(z_dim, 1000),
-            nn.LeakyReLU(0.2, True),
-            nn.Linear(1000, 1000),
-            nn.LeakyReLU(0.2, True),
-            nn.Linear(1000, 1000),
-            nn.LeakyReLU(0.2, True),
-            nn.Linear(1000, 1000),
-            nn.LeakyReLU(0.2, True),
-            nn.Linear(1000, 1000),
-            nn.LeakyReLU(0.2, True),
-            nn.Linear(1000, 1),
-            nn.Sigmoid()
+        # self.dim_c_disc = dim_c_disc
+        self.dim_c_cont = dim_c_cont
+        # self.n_c_disc = n_c_disc
+        # Shared layers
+        self.module_shared = nn.Sequential(
+            spectral_norm(nn.Conv2d(in_channels=2,
+                      out_channels=64,
+                      kernel_size=4,
+                      stride=2,
+                      padding=1)),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            spectral_norm(nn.Conv2d(in_channels=64,
+                      out_channels=128,
+                      kernel_size=4,
+                      stride=2,
+                      padding=1)),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            Reshape(-1, 128*7*7),
+            spectral_norm(nn.Linear(in_features=128*7*7, out_features=1024)),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
         )
 
-    def forward(self, z):
-        return self.net(z).squeeze()
+
+        self.module_Q = nn.Sequential(
+            spectral_norm(nn.Linear(in_features=1024, out_features=128)),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+        )
+
+        self.latent_disc = nn.Sequential(
+            spectral_norm(nn.Linear(
+                in_features=128, out_features=10)),
+            Reshape(-1, 1, 10),
+        )
 
 
-class Reshape(nn.Module):
-    def __init__(self, *args):
-        super(Reshape, self).__init__()
-        self.shape = args
 
-    def forward(self, x):
-        return x.view(self.shape)
+    def forward(self, x1, x2):
+        x = torch.cat((x1, x2), dim=1)
+        out = self.module_shared(x)
+        internal_Q = self.module_Q(out)
+        c_disc_logits = self.latent_disc(internal_Q)
+        return c_disc_logits
 
 
 class InfoGan(object):
@@ -155,7 +172,7 @@ class InfoGan(object):
 
         self.decoder = Generator(dim_z=62,n_c_disc=1,dim_c_disc=10,dim_c_cont=0)
         self.encoder = Discriminator(dim_c_disc=10,dim_c_cont=0,n_c_disc=1)
-        # self.cr_disc = CRDiscriminator(z_dim=5)
+        self.cr_disc = CRDiscriminator(dim_c_cont=10)
 
     def dummy(self):
         print('This is a dummy function')

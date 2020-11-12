@@ -31,5 +31,12 @@ def get_model(config):
                                         {'params': model.encoder.module_Q.parameters()},
                                         {'params': model.encoder.latent_disc.parameters()}],
                                        lr=1e-3, betas=(config['beta1'], config['beta2']))
-        optimizer = (d_optimizer, g_optimizer)
+        cr_optimizer = torch.optim.Adam([{'params': model.cr_disc.parameters()}],
+                                       lr=config['learning_r_CR'], betas=(config['beta1'], config['beta2']))
+
+        optimizer = (d_optimizer, g_optimizer,cr_optimizer)
+    elif model_name == 'cnn':
+        from classifier import Classifier
+        model = Classifier()
+        optimizer = torch.optim.Adam(model.parameters(),lr=1e-4)
     return model, optimizer

@@ -48,6 +48,14 @@ class Saver(object):
 			model.decoder.load_state_dict(checkpoint['gen_state_dict'])
 			optimizer[0].load_state_dict(checkpoint['gen_optimizer_state_dict'])
 			optimizer[1].load_state_dict(checkpoint['dis_optimizer_state_dict'])
+			for state in optimizer[0].state.values():
+				for k, v in state.items():
+					if isinstance(v, torch.Tensor):
+						state[k] = v.cuda()
+			for state in optimizer[1].state.values():
+				for k, v in state.items():
+					if isinstance(v, torch.Tensor):
+						state[k] = v.cuda()
 			loss = checkpoint['loss']
 			return model, (optimizer[0], optimizer[1]), loss
 		else:

@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import time
 import logging
+import torch.nn.functional as F
 
 log = logging.getLogger(__name__)
 
@@ -34,13 +35,19 @@ class Evaluator(object):
             test_loader = torch.utils.data.DataLoader(data, batch_size=self.config['batch_size'], shuffle=True,drop_last=True)
             correct = 0
             total = 0
-            # for images,labels in test_loader:
-            #     _ ,  outputs  = model.encoder(images.cuda())
-            #     _, predicted = torch.max(outputs.data, 1)
-            #     total += labels.size(0)
-            #     correct += (predicted.cpu() == labels.cpu()).sum()
-            # accuracy = 100 * correct.item() / total
-            # print('EPOCH: {}. Accuracy: {}'.format(epoch, accuracy))
+            label_map = { '0' : 0, '1':  3 , '2' : 2 ,'3': 1 ,'4': 8 ,'5': 6 ,'6': 9 , '7':4 ,'8':7 ,'9': 5}
+
+
+            for images,labels in test_loader:
+                _ ,  outputs  = model.encoder(images.cuda())
+                _, predicted = torch.max(outputs.data, 2)
+                total += labels.size(0)
+                labels_new = labels.tolist()
+                converted_labels = [label_map[str(x)] for x in labels_new]
+                converted_tensor = torch.LongTensor(converted_labels)
+                correct += (predicted.cpu() == converted_tensor.view(-1,1).cpu()).sum()
+            accuracy = 100 * correct.item() / total
+            print('EPOCH: {}. Accuracy: {}'.format(epoch, accuracy))
         else:
             start_time = time.time()
             beta_vae = BetaVAEMetric(self.data, self.device, self.config)
