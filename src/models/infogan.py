@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import spectral_norm
 import torch.nn.functional as F
+import os
 
 '''
 Generator Model Definition
@@ -12,7 +13,7 @@ class Generator(nn.Module):
     def __init__(self, dim_z=5, dim_c_cont=5):
         super(Generator, self).__init__()
         self.dim_latent = dim_z + dim_c_cont
-        self.fc1 = nn.Linear(in_features=self.dim_latent, out_features=128)
+        self.fc1 = nn.Linear(in_features=118, out_features=128)
         self.bn1 = nn.BatchNorm1d(num_features=128)
         self.fc2 = nn.Linear(in_features=128, out_features=4 * 4 * 64)
         self.bn2 = nn.BatchNorm1d(4 * 4 * 64)
@@ -96,8 +97,33 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(negative_slope=0.2, inplace=True),
         )
 
-        self.latent_cont = spectral_norm(nn.Linear(
-            in_features=128, out_features=self.dim_c_cont))
+        self.latent_disc_shape = nn.Sequential(
+            nn.Linear(
+                in_features=128, out_features=3),
+            Reshape(-1, 1, 3),
+        )
+
+        self.latent_disc_size = nn.Sequential(
+            nn.Linear(
+                in_features=128, out_features=6),
+            Reshape(-1, 1, 6),
+        )
+
+        self.latent_disc_orient = nn.Sequential(
+            nn.Linear(
+                in_features=128, out_features=40),
+            Reshape(-1, 1, 40),
+        )
+        self.latent_disc_xpos = nn.Sequential(
+            nn.Linear(
+                in_features=128, out_features=32),
+            Reshape(-1, 1, 32),
+        )
+        self.latent_disc_ypos = nn.Sequential(
+            nn.Linear(
+                in_features=128, out_features=32),
+            Reshape(-1, 1, 32),
+        )
 
 
     def forward(self, z):
@@ -106,8 +132,12 @@ class Discriminator(nn.Module):
         probability = self.module_D(out)
         probability = probability.squeeze()
         internal_Q = self.module_Q(out)
-        c_cont = self.latent_cont(internal_Q)
-        return c_cont,probability
+        c_disc_shape = self.latent_disc_shape(internal_Q)
+        c_disc_size = self.latent_disc_size(internal_Q)
+        c_disc_orient = self.latent_disc_orient(internal_Q)
+        c_disc_xpos = self.latent_disc_xpos(internal_Q)
+        c_disc_ypos = self.latent_disc_ypos(internal_Q)
+        return probability, (c_disc_shape,c_disc_size,c_disc_orient,c_disc_xpos,c_disc_ypos)
 
 
 class Reshape(nn.Module):
@@ -119,12 +149,23 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 
+class ModeCounter(nn.Module):
+    def __init__(self):
+        super(ModeCounter, self).__init__()
+        self.net = torch.nn.Sequential(torch.nn.Linear(256, 200), torch.nn.LeakyReLU(), torch.nn.Linear(200, 100),
+                                       torch.nn.LeakyReLU(), torch.nn.Linear(100, 1), )
+
+    def forward(self, z):
+        return self.net(z)
+
+
 class InfoGan(object):
     def __init__(self, config):
         super(InfoGan, self).__init__()
 
         self.decoder = Generator(dim_z=config['noise_dim'], dim_c_cont=config['latent_dim'])
         self.encoder = Discriminator(dim_c_cont=config['latent_dim'])
+        # self.mode_counter = ModeCounter(os.path.dirname(os.getcwd()) + f'/pretrained_models/{self.model_name}')
 
     def dummy(self):
         print('This is a dummy function')

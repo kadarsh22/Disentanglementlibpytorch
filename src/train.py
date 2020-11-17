@@ -1,6 +1,7 @@
 import time
 import os
 import random
+import numpy as np
 from utils import *
 
 log = logging.getLogger(__name__)
@@ -15,6 +16,11 @@ class Trainer(object):
         self.train_loader = self._get_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
+        self.shape = [x for x in range(3)]
+        self.size = [x for x in range(6)]
+        self.orient = [x for x in range(40)]
+        self.xpos = [x for x in range(32)]
+        self.ypos = [x for x in range(32)]
 
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
@@ -43,9 +49,10 @@ class Trainer(object):
         d_loss_summary, g_loss_summary, info_loss_summary ,oracle_loss_summary = 0, 0, 0 , 0
         model.encoder.to(self.device)
         model.decoder.to(self.device)
+        # model.mode_counter.to(self.device)
 
         adversarial_loss = torch.nn.BCELoss()
-        criterionQ_con = log_gaussian()
+        categorical_loss = torch.nn.CrossEntropyLoss()
         label_real = torch.full((self.config['batch_size'],), 1, dtype=torch.float32, device=self.device)
         label_fake = torch.full((self.config['batch_size'],), 0, dtype=torch.float32, device=self.device)
 
@@ -53,20 +60,25 @@ class Trainer(object):
             images = images.type(torch.FloatTensor).to(self.device)
             z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
                                  device=self.device) * 2 - 1
-            c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
-                                device=self.device) * 2 - 1
+            c_cond , shape_mu ,size_mu,orient_mu ,xpos_mu ,ypos_mu = self.sample()
 
             z = torch.cat((z_noise, c_cond), dim=1)
 
             g_optimizer.zero_grad()
 
             fake_x = model.decoder(z)
-            latent_code, prob_fake = model.encoder(fake_x)
+            prob_fake , latent_code = model.encoder(fake_x)
+            c_disc_shape, c_disc_size, c_disc_orient, c_disc_xpos, c_disc_ypos = latent_code
 
             g_loss = adversarial_loss(prob_fake, label_real)
-            cont_loss = criterionQ_con(c_cond, latent_code)
 
-            G_loss = g_loss + cont_loss * self.config['lambda']
+            shape_loss = categorical_loss(c_disc_shape.view(-1,3), shape_mu.view(-1))
+            size_loss = categorical_loss(c_disc_size.view(-1, 6), size_mu.view(-1))
+            orient_loss = categorical_loss(c_disc_orient.view(-1, 40), orient_mu.view(-1))
+            xpos_loss = categorical_loss(c_disc_xpos.view(-1, 32), xpos_mu.view(-1))
+            ypos_loss = categorical_loss(c_disc_ypos.view(-1, 32), ypos_mu.view(-1))
+
+            G_loss = g_loss +  self.config['lambda']
             G_loss.backward()
 
             g_optimizer.step()
@@ -111,3 +123,18 @@ class Trainer(object):
         images = self.data.images
         train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
         return train_loader
+
+    def sample(self):
+        shape_mu = torch.LongTensor(np.random.choice(self.shape,size=64)).view(-1,1).to(self.device)
+        size_mu = torch.LongTensor(np.random.choice(self.size, size=64)).view(-1,1).to(self.device)
+        orient_mu = torch.LongTensor(np.random.choice(self.orient, size=64)).view(-1,1).to(self.device)
+        xpos_mu = torch.LongTensor(np.random.choice(self.xpos, size=64)).view(-1,1).to(self.device)
+        ypos_mu = torch.LongTensor(np.random.choice(self.ypos, size=64)).view(-1,1).to(self.device)
+        shape_onehot =torch.nn.functional.one_hot(shape_mu.to(torch.int64),num_classes=3)
+        size_onehot = torch.nn.functional.one_hot(size_mu.to(torch.int64), num_classes=6)
+        orient_onehot = torch.nn.functional.one_hot(orient_mu.to(torch.int64), num_classes=40)
+        xpos_onehot = torch.nn.functional.one_hot(xpos_mu.to(torch.int64), num_classes=32)
+        ypos_onehot = torch.nn.functional.one_hot(ypos_mu.to(torch.int64), num_classes=32)
+        c_cond = torch.cat((shape_onehot,size_onehot,orient_onehot,xpos_onehot,ypos_onehot),dim=-1).squeeze()
+        return c_cond.to(self.device) ,shape_mu ,size_mu,orient_mu ,xpos_mu ,ypos_mu
+

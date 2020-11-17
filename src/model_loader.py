@@ -27,7 +27,11 @@ def get_model(config):
                                        lr=config['learning_r_D'], betas=(config['beta1'], config['beta2']))
         g_optimizer = torch.optim.Adam([{'params': model.decoder.parameters()},
                                         {'params': model.encoder.module_Q.parameters()},
-                                        {'params': model.encoder.latent_cont.parameters()}],
+                                        {'params': model.encoder.latent_disc_shape.parameters()},
+                                        {'params': model.encoder.latent_disc_size.parameters()},
+                                        {'params': model.encoder.latent_disc_orient.parameters()},
+                                        {'params': model.encoder.latent_disc_xpos.parameters()},
+                                        {'params': model.encoder.latent_disc_ypos.parameters()}],
                                        lr=config['learning_r_G'], betas=(config['beta1'], config['beta2']))
         optimizer = (d_optimizer, g_optimizer)
 
