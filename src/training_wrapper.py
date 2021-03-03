@@ -37,7 +37,8 @@ def run_training_wrapper(configuration, data, perf_logger):
 		elif configuration['model_arch'] == 'gan':
 			model.encoder.train()
 			model.decoder.train()
-			model, loss, optimizer = model_trainer.train_gan(model, optimizer, i)
+			model, optimizer, loss = model_trainer.train_classifier(model)
+			# model, loss, optimizer = model_trainer.train_gan(model, optimizer, i)
 		elif configuration['model_arch'] == 'cnn':
 			model.train()
 			model, optimizer, loss = model_trainer.train_classifier(model, optimizer, i)

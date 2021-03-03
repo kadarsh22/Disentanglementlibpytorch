@@ -3,6 +3,7 @@ import os
 import random
 from utils import *
 # from sklearn.preprocessing import train_test_split
+from models.infogan import CRDiscriminator
 
 log = logging.getLogger(__name__)
 
@@ -152,44 +153,109 @@ class Trainer(object):
         z = torch.cat((latent_pair_one, latent_pair_two), dim=0).to(self.device)
         return z, idx_fixed
 
-    def train_classifier(self, model, optimizer, epoch):
-        running_loss = 0.0
-        criterion = torch.nn.CrossEntropyLoss()
-        for i, data in enumerate(self.train_loader, 0):
+    def get_disentangled_vectors(self):
+        z_noise = torch.rand(self.config['batch_size'], self.config['noise_dim'], dtype=torch.float32,
+                             device=self.device) * 2 - 1
 
-            inputs, labels = data
-            inputs = inputs.cuda()
-            labels = labels.cuda()
+        c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                            device=self.device) * 2 - 1
 
-            # zero the parameter gradients
-            optimizer.zero_grad()
+        shifts = torch.rand(self.config['batch_size'], 1, dtype=torch.float32,
+                            device=self.device) * 2 - 1
 
-            # forward + backward + optimize
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+        target_indices = torch.randint( self.config['latent_dim'],(self.config['batch_size'],1)).cuda()
 
-            # print statistics
-            running_loss += loss.item()
-            if i % 2000 == 1999:  # print every 2000 mini-batches
-                print('[%d, %5d] loss: %.3f' %
-                      (epoch + 1, i + 1, running_loss / 2000))
-                running_loss = 0.0
+        z_shift_disentangled = torch.zeros(self.config['batch_size'],self.config['latent_dim']).cuda()
+        for i, (index, val) in enumerate(zip(target_indices, shifts)):
+            z_shift_disentangled[i][index] += val
 
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for data in self.test_loader:
-                images, labels = data
-                outputs = model(images.cuda())
-                _, predicted = torch.max(outputs.data.cpu(), 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
 
-        print('Accuracy of the network on the 10000 test images: %d %%' % (
-                100 * correct / total))
-        return model, optimizer, epoch
+        c_disentangled = c_cond + z_shift_disentangled
+
+
+        return c_disentangled , z_noise ,c_cond
+
+    def get_entangled_vector(self):
+        entanglement_proportion_list = [0.5, 0.75, 1]
+        entanglement_proportion = random.choice(entanglement_proportion_list)
+        rand_mat = torch.rand(self.config['batch_size'], self.config['latent_dim'])
+        k = round(entanglement_proportion * self.config['latent_dim'])  # For the general case change 0.25 to the percentage you need
+        k_th_quant = torch.topk(rand_mat, k, largest=False)[0][:, -1:]
+        bool_tensor = rand_mat <= k_th_quant
+        desired_tensor = torch.where(bool_tensor, torch.tensor(1), torch.tensor(0)).cuda()
+        c_cond = torch.rand(self.config['batch_size'], self.config['latent_dim'], dtype=torch.float32,
+                            device=self.device) * 2 - 1
+
+        c_entangled = desired_tensor * c_cond
+        return c_entangled
+
+
+    def train_classifier(self,model):
+        adverserial_loss = torch.nn.CrossEntropyLoss()
+        training_loss = []
+        classifier = CRDiscriminator(dim_c_cont=2).cuda()
+        cr_optimizer = torch.optim.Adam(classifier.parameters(), lr=0.002, betas=(0.9, 0.999))
+        classifier.train()
+        for iteration in range(5000):
+            cr_optimizer.zero_grad()
+            label_real = torch.full((64,), 1, dtype=torch.long, device='cuda')
+            label_fake = torch.full((64,), 0, dtype=torch.long, device='cuda')
+            labels = torch.cat((label_real, label_fake))
+            c_disentangled , z_noise ,c_cond  = self.get_disentangled_vectors()
+            c_shifted = self.get_entangled_vector()
+            c_entangled = c_cond + c_shifted
+            z_reference = torch.cat((z_noise,c_cond),dim=1)
+            z_disentangled = torch.cat((z_noise,c_disentangled),dim=1)
+            z_entangled = torch.cat((z_noise,c_entangled),dim=1)
+            ref_images = model.decoder(z_reference).detach().view(-1,1,64,64)
+            disentangled_images = model.decoder(z_disentangled).detach().view(-1,1,64,64)
+            entangled_images = model.decoder(z_entangled).detach().view(-1,1,64,64)
+            images = torch.cat((disentangled_images, entangled_images))
+            ref_images = torch.cat((ref_images,ref_images))
+            shuffled_indices = torch.randint(0,images.size(0), (images.size(0),))
+            ref_images = ref_images[shuffled_indices]
+            images = images[shuffled_indices]
+            labels = labels[shuffled_indices]
+            # prob_disentangle = classifier(ref_images.cuda(), disentangled_images.cuda())
+            prob = classifier(ref_images.cuda(), images.cuda())
+            loss_dis = adverserial_loss(prob, labels)
+            loss_dis.backward()
+            cr_optimizer.step()
+            training_loss.append(loss_dis.item())
+            if iteration % 100 == 0 and iteration != 0:
+                correct = 0
+                total = 0
+                classifier.eval()
+                with torch.no_grad():
+                    for k in range(1000):
+                        label_real = torch.full((64,), 1, dtype=torch.float32, device='cuda')
+                        label_fake = torch.full((64,), 0, dtype=torch.float32, device='cuda')
+                        c_disentangled , z_noise ,c_cond  = self.get_disentangled_vectors()
+                        c_shifted = self.get_entangled_vector()
+                        c_entangled = c_cond + c_shifted
+                        z_reference = torch.cat((z_noise,c_cond),dim=1)
+                        z_disentangled = torch.cat((z_noise,c_disentangled),dim=1)
+                        z_entangled = torch.cat((z_noise,c_entangled),dim=1)
+                        ref_images = model.decoder(z_reference).detach().view(-1,1,64,64)
+                        disentangled_images = model.decoder(z_disentangled).detach().view(-1,1,64,64)
+                        entangled_images = model.decoder(z_entangled).detach().view(-1,1,64,64)
+                        prob_disentangle = classifier(ref_images.cuda(), disentangled_images.cuda())
+                        prob_entangle = classifier(ref_images.cuda(), entangled_images.cuda())
+                        _, predicted_dis = torch.max(prob_disentangle,1)
+                        _, predicted_ent = torch.max(prob_entangle,1)
+                        predicted = torch.cat((predicted_dis, predicted_ent))
+                        labels = torch.cat((label_real, label_fake))
+
+                        # Total number of labels
+                        total += labels.size(0)
+
+                        # Total correct predictions
+                        correct += (predicted.view(-1) == labels.view(-1)).sum()
+                    classifier.train()
+                    accuracy = 100 * correct.item() / total
+
+                    print('training loss : ', sum(training_loss) / len(training_loss), "accuracy :", accuracy)
+                    training_loss = []
 
     @staticmethod
     def set_seed(seed):

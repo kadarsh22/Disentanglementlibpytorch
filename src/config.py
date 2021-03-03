@@ -18,7 +18,7 @@ parser.add_argument('--experiment_name', type=str, default=experiment_name)
 parser.add_argument('--experiment_description', type=str, default=experiment_description)
 
 # general configuration
-parser.add_argument('--model_arch', type=str, default='gan', choices=['vae', 'gan', 'deepinfomax'],
+parser.add_argument('--model_arch', type=str, default='gan', choices=['vae', 'gan', 'deepinfomax','cnn'],
                     help='architecture of model')
 parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_vae', 'factor_vae', 'infogan',
                                                                           'betavae_cnn'], help='architecture of '
@@ -31,7 +31,7 @@ parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at whi
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='whether to run in ablation study mode or not')
 parser.add_argument('--evaluation', type=bool, default=False, help='whether to run in evaluation mode or not')
-parser.add_argument('--file_name', type=str, default='25_gan.pkl', help='name of the model to be loaded')
+parser.add_argument('--file_name', type=str, default='2_gan.pkl', help='name of the model to be loaded')
 parser.add_argument('--device_id', type=int, default=0, help='Device id of gpu')
 parser.add_argument('--random_seed', type=int, default=239, help='Random seeds to run for ')
 
