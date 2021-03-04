@@ -170,7 +170,7 @@ class InfoGan(object):
 
         self.decoder = Generator(dim_z=config['noise_dim'], dim_c_cont=config['latent_dim'])
         self.encoder = Discriminator(dim_c_cont=config['latent_dim'])
-        self.cr_disc = CRDiscriminator(dim_c_cont=config['latent_dim'])
+        self.cr_disc = CRDiscriminator(dim_c_cont=2)
 
     def dummy(self):
         print('This is a dummy function')

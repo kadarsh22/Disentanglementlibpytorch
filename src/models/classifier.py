@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 
 class Classifier(nn.Module):
-	def __init__(self, output_dim=40):
+	def __init__(self, output_dim=2):
 		super(Classifier, self).__init__()
 
-		self.latent_dim = output_dim
-		self.nc = 1
+		self.latent_dim = 2
+		self.nc = 2
 
 		self.cnn1_en = nn.Conv2d(self.nc, 32, 4, 2, 1)
 		self.cnn2_en = nn.Conv2d(32, 32, 4, 2, 1)
@@ -29,6 +29,7 @@ class Classifier(nn.Module):
 		z_parameters = self.z_mean(out)
 		return z_parameters
 
-	def forward(self, x):
+	def forward(self, x1,x2):
+		x = torch.cat((x1, x2), dim=1)
 		z_mean = self.encoder(x)
 		return z_mean
