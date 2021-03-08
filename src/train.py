@@ -87,27 +87,27 @@ class Trainer(object):
 
             fake_x = model.decoder(z)
             total_images = torch.cat((fake_x,postive_pairs,negative_pairs),dim=0)
-            latent_code, prob_fake  = model.encoder(total_images)
+            latent_code, prob_fake , latent_similar = model.encoder(total_images)
 
             g_loss = adversarial_loss(prob_fake[:64], label_real)
             cont_loss = criterionQ_con(c_cond, latent_code[:64])
-            similarity_loss_shape = similarity_loss(latent_code[:64,0].view(-1,1),latent_code[64:128,0].view(-1,1) ,latent_code[384:448,0].view(-1,1) )
-            similarity_loss_size = similarity_loss(latent_code[:64,1].view(-1,1),latent_code[128:192,1].view(-1,1) ,latent_code[448:512,1].view(-1,1) )
-            similarity_loss_orient = similarity_loss(latent_code[:64,2].view(-1,1), latent_code[192:256,2].view(-1,1),latent_code[512:576,2].view(-1,1) )
-            similarity_loss_xpos = similarity_loss(latent_code[:64,3].view(-1,1), latent_code[256:320,3].view(-1,1),latent_code[576:640,3].view(-1,1) )
-            similarity_loss_ypos = similarity_loss(latent_code[:64,4].view(-1,1), latent_code[320:384,4].view(-1,1),latent_code[640:704,4].view(-1,1) )
+            similarity_loss_shape = similarity_loss(latent_similar[:64],latent_similar[64:128] ,latent_similar[384:448] )
+            similarity_loss_size = similarity_loss(latent_similar[:64],latent_similar[128:192] ,latent_similar[448:512] )
+            similarity_loss_orient = similarity_loss(latent_similar[:64], latent_similar[192:256],latent_similar[512:576] )
+            similarity_loss_xpos = similarity_loss(latent_similar[:64], latent_similar[256:320],latent_similar[576:640] )
+            similarity_loss_ypos = similarity_loss(latent_similar[:64], latent_similar[320:384],latent_similar[640:704] )
             G_loss = g_loss + cont_loss * 0.1 + 0.1*(similarity_loss_shape + similarity_loss_size + similarity_loss_orient + similarity_loss_xpos + similarity_loss_ypos)
             G_loss.backward()
 
             g_optimizer.step()
 
             d_optimizer.zero_grad()
-            latent_code, prob_real= model.encoder(images)
+            latent_code, prob_real, _ = model.encoder(images)
             loss_real = adversarial_loss(prob_real, label_real)
             loss_real.backward()
 
             fake_x = model.decoder(z)
-            latent_code_gen, prob_fake  = model.encoder(fake_x.detach())
+            latent_code_gen, prob_fake , _ = model.encoder(fake_x.detach())
 
             loss_fake = adversarial_loss(prob_fake, label_fake)
             loss_fake.backward()
