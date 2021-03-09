@@ -108,6 +108,5 @@ class Trainer(object):
         os.environ['PYTHONHASHSEED'] = str(seed)
 
     def _get_training_data(self):
-        images = self.data.images
-        train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
+        train_loader = torch.utils.data.DataLoader(self.data.images, batch_size=self.config['batch_size'], shuffle=True)
         return train_loader
