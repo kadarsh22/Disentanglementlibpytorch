@@ -33,7 +33,7 @@ parser.add_argument('--ablation', type=bool, default=False, help='whether to run
 parser.add_argument('--evaluation', type=bool, default=False, help='whether to run in evaluation mode or not')
 parser.add_argument('--file_name', type=str, default='30_gan.pkl', help='name of the model to be loaded')
 parser.add_argument('--device_id', type=int, default=0, help='Device id of gpu')
-parser.add_argument('--random_seed', type=int, default=239, help='Random seeds to run for ')
+parser.add_argument('--random_seed', type=int, default=567, help='Random seeds to run for ')
 
 # VAE configurations
 parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
