@@ -15,11 +15,22 @@ class Trainer(object):
         self.train_loader = self._get_training_data()
         self.train_hist_vae = {'loss': [], 'bce_loss': [], 'kld_loss': []}
         self.train_hist_gan = {'d_loss': [], 'g_loss': [], 'info_loss': []}
-        self.shape_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(6 * 40 * 32 * 32 + 1, 3 * 6 * 40 * 32 * 32 + 1, 6 * 40 * 32 * 32)]]))
-        self.size_template =  torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(40 * 32 * 32 + 1, 6 * 40 * 32 * 32 + 1, 40 * 32 * 32)]]))
-        self.orientation_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32 * 32 + 1, 40 * 32 * 32 + 1, 32 * 32)]]))
-        self.xpos_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[0] + [x for x in range(32, 32 * 32, 32)]]))
-        self.ypos_template = torch.from_numpy(self.data.sample_images_from_latent(self.data.latents_classes[[x for x in range(32)]]))
+        
+        shape_samples = self.data.sample_latent(size=3)
+        shape_samples[:, 1] = range(3)
+        self.shape_template = torch.from_numpy(self.data.sample_images_from_latent(shape_samples))
+        size_samples = self.data.sample_latent(size=6)
+        size_samples[:, 2] = range(6)
+        self.size_template = torch.from_numpy(self.data.sample_images_from_latent(size_samples))
+        orientation_samples = self.data.sample_latent(size=40)
+        orientation_samples[:, 3] = range(40)
+        self.orientation_template = torch.from_numpy(self.data.sample_images_from_latent(orientation_samples))
+        xpos_samples = self.data.sample_latent(size=32)
+        xpos_samples[:, 4] = range(32)
+        self.xpos_template = torch.from_numpy(self.data.sample_images_from_latent(xpos_samples))
+        ypos_samples = self.data.sample_latent(size=32)
+        ypos_samples[:, 5] = range(32)
+        self.ypos_template = torch.from_numpy(self.data.sample_images_from_latent(ypos_samples))
 
         self.shape_bins = np.array([-1] + [-1 + 2*x/3 for x in range(1,3)] +[1])
         self.size_bins = np.array([-1] + [-1 + 2*x/6 for x in range(1,6)] + [1])
@@ -77,7 +88,7 @@ class Trainer(object):
             positive_orient_samples ,negative_orient_samples = self.get_sample_oracle_orient_pairs(c_cond)
             positive_xpos_samples ,negative_xpos_samples= self.get_sample_oracle_xpos_pairs(c_cond)
             positive_ypos_samples ,negative_ypos_samples = self.get_sample_oracle_ypos_pairs(c_cond)
-            postive_pairs = torch.cat((positive_shape_samples,positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_xpos_samples),dim=0).to(self.device)
+            postive_pairs = torch.cat((positive_shape_samples,positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_ypos_samples),dim=0).to(self.device)
             negative_pairs = torch.cat((negative_shape_samples, negative_size_samples,negative_orient_samples,negative_xpos_samples,negative_ypos_samples),dim=0).to(self.device)
 
             fake_x = model.decoder(z)
