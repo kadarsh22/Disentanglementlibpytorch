@@ -26,6 +26,10 @@ class Trainer(object):
         self.orientation_bins = np.array([-1] + [-1 + 2*x/40 for x in range(1,40)] + [1])
         self.xpos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32) ] + [1])
         self.ypos_bins =  np.array([-1] + [-1 + 2*x/32 for x in range(1,32)] + [1])
+        self.c_cond_new = -1*torch.ones((self.config['batch_size'], self.config['latent_dim'] - 1),device=self.device)
+
+
+
 
     def train_vae(self, model, optimizer, epoch):
         start_time = time.time()
@@ -72,11 +76,26 @@ class Trainer(object):
 
             g_optimizer.zero_grad()
 
-            positive_shape_samples ,negative_shape_samples = self.get_sample_oracle_shape_pairs(c_cond)
-            positive_size_samples ,negative_size_samples = self.get_sample_oracle_size_pairs(c_cond)
-            positive_orient_samples ,negative_orient_samples = self.get_sample_oracle_orient_pairs(c_cond)
-            positive_xpos_samples ,negative_xpos_samples= self.get_sample_oracle_xpos_pairs(c_cond)
-            positive_ypos_samples ,negative_ypos_samples = self.get_sample_oracle_ypos_pairs(c_cond)
+            positive_shape_c ,negative_shape_c = self.get_sample_oracle_shape_pairs(c_cond)
+            positive_size_c ,negative_size_c = self.get_sample_oracle_size_pairs(c_cond)
+            positive_orient_c ,negative_orient_c = self.get_sample_oracle_orient_pairs(c_cond)
+            positive_xpos_c ,negative_xpos_c = self.get_sample_oracle_xpos_pairs(c_cond)
+            positive_ypos_c ,negative_ypos_c = self.get_sample_oracle_ypos_pairs(c_cond)
+
+
+            positive_shape_samples = model.decoder(torch.cat((z_noise, positive_shape_c), dim=1)).detach()
+            negative_shape_samples  =  model.decoder(torch.cat((z_noise, negative_shape_c), dim=1)).detach()
+            positive_size_samples = model.decoder(torch.cat((z_noise, positive_size_c), dim=1)).detach()
+            negative_size_samples  =  model.decoder(torch.cat((z_noise, negative_size_c), dim=1)).detach()
+            positive_orient_samples = model.decoder(torch.cat((z_noise, positive_orient_c), dim=1)).detach()
+            negative_orient_samples  =  model.decoder(torch.cat((z_noise, negative_orient_c), dim=1)).detach()
+            positive_xpos_samples = model.decoder(torch.cat((z_noise, positive_xpos_c), dim=1)).detach()
+            negative_xpos_samples  =  model.decoder(torch.cat((z_noise, negative_xpos_c), dim=1)).detach()
+            positive_ypos_samples = model.decoder(torch.cat((z_noise, positive_ypos_c), dim=1)).detach()
+            negative_ypos_samples  =  model.decoder(torch.cat((z_noise, negative_ypos_c), dim=1)).detach()
+
+
+
             postive_pairs = torch.cat((positive_shape_samples,positive_size_samples,positive_orient_samples,positive_xpos_samples,positive_xpos_samples),dim=0).to(self.device)
             negative_pairs = torch.cat((negative_shape_samples, negative_size_samples,negative_orient_samples,negative_xpos_samples,negative_ypos_samples),dim=0).to(self.device)
 
@@ -176,27 +195,27 @@ class Trainer(object):
 
 
     def get_sample_oracle_shape_pairs(self , c_cond):
-        # shape_factor = c_cond[:, 0]
+        shape_factor = c_cond[:, 0]
         # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
         #                     device=self.device) * 2 - 1
-        # c_cond_similar = torch.cat((shape_factor.view(-1,1), c_cond_new),dim=-1)
+        c_cond_similar = torch.cat((shape_factor.view(-1,1), self.c_cond_new),dim=-1)
         latent = np.digitize(c_cond[:,0].cpu(),self.shape_bins)
         latent =  [x - 1 for x in latent.tolist()]
         replace_list = []
         for current_value in latent:
             replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 3)))
             replace_list.append(replace_value)
-        # differ_shape = torch.FloatTensor([random.uniform(bins[x],bins[x+1]) for x in  replace_list]).view(-1,1).to(self.device)
-        # c_cond_differ = torch.cat((differ_shape, c_cond[:,1:]),dim=-1)
-        negative_samples = torch.stack([self.shape_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([self.shape_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples
+        differ_shape = torch.FloatTensor([random.uniform(self.shape_bins[x],self.shape_bins[x+1]) for x in  replace_list]).view(-1,1).to(self.device)
+        c_cond_differ = torch.cat((differ_shape, c_cond[:,1:]),dim=-1)
+        # negative_samples = torch.stack([self.shape_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
+        # positive_samples = torch.stack([self.shape_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
+        return c_cond_similar , c_cond_differ
 
     def get_sample_oracle_size_pairs(self , c_cond):
-        # size_factor = c_cond[:, 1]
+        size_factor = c_cond[:, 1]
         # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
         #                     device=self.device) * 2 - 1
-        # c_cond_similar = torch.cat((c_cond_new[:,:1], size_factor.view(-1,1), c_cond_new[:,1:]),dim=-1)
+        c_cond_similar = torch.cat((self.c_cond_new[:,:1], size_factor.view(-1,1), self.c_cond_new[:,1:]),dim=-1)
         latent = np.digitize(c_cond[:,1].cpu(),self.size_bins)
         latent =  [x - 1 for x in latent.tolist()]
 
@@ -204,62 +223,58 @@ class Trainer(object):
         for current_value in latent:
             replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 6)))
             replace_list.append(replace_value)
-        # differ_size = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        # c_cond_differ = torch.cat((c_cond[:,:1] ,differ_size, c_cond[:, 2:]), dim=-1)
-        negative_samples = torch.stack([self.size_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([self.size_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples
+        differ_size = torch.FloatTensor([random.uniform(self.size_bins[x], self.size_bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
+        c_cond_differ = torch.cat((c_cond[:,:1] ,differ_size, c_cond[:, 2:]), dim=-1)
+        # negative_samples = torch.stack([self.size_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
+        # positive_samples = torch.stack([self.size_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
+        return c_cond_similar,c_cond_differ
 
     def get_sample_oracle_orient_pairs(self , c_cond):
-        # orient_factor = c_cond[:, 2]
+        orient_factor = c_cond[:, 2]
         # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
         #                     device=self.device) * 2 - 1
-        # c_cond_similar = torch.cat((c_cond_new[:,:2], orient_factor.view(-1,1), c_cond_new[:,2:]),dim=-1)
+        c_cond_similar = torch.cat((self.c_cond_new[:,:2], orient_factor.view(-1,1), self.c_cond_new[:,2:]),dim=-1)
         latent = np.digitize(c_cond[:,2].cpu(), self.orientation_bins)
         latent =  [x - 1 for x in latent.tolist()]
         replace_list = []
         for current_value in latent:
             replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 40)))
             replace_list.append(replace_value)
-        # differ_orient = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        # c_cond_differ = torch.cat((c_cond[:,:2] ,differ_orient, c_cond[:, 3:]), dim=-1)
-        negative_samples = torch.stack([self.orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([self.orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples
+        differ_orient = torch.FloatTensor([random.uniform(self.orientation_bins[x], self.orientation_bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
+        c_cond_differ = torch.cat((c_cond[:,:2] ,differ_orient, c_cond[:, 3:]), dim=-1)
+        # negative_samples = torch.stack([self.orientation_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
+        # positive_samples = torch.stack([self.orientation_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
+        return c_cond_similar,c_cond_differ
 
     def get_sample_oracle_xpos_pairs(self , c_cond):
-        # xpos_factor = c_cond[:, 3]
-        # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
-        #                     device=self.device) * 2 - 1
-        # c_cond_similar = torch.cat((c_cond_new[:,:3], xpos_factor.view(-1,1), c_cond_new[:,3:]),dim=-1)
+        xpos_factor = c_cond[:, 3]
+        c_cond_similar = torch.cat((self.c_cond_new[:,:3], xpos_factor.view(-1,1), self.c_cond_new[:,3:]),dim=-1)
         latent = np.digitize(c_cond[:,3].cpu(),self.xpos_bins)
         latent =  [x - 1 for x in latent.tolist()]
         replace_list = []
         for current_value in latent:
             replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 32)))
             replace_list.append(replace_value)
-        # differ_xpos = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        # c_cond_differ = torch.cat((c_cond[:,:3] ,differ_xpos, c_cond[:, 4:]), dim=-1)
-        negative_samples = torch.stack([self.xpos_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([self.xpos_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples
+        differ_xpos = torch.FloatTensor([random.uniform(self.xpos_bins[x], self.xpos_bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
+        c_cond_differ = torch.cat((c_cond[:,:3] ,differ_xpos, c_cond[:, 4:]), dim=-1)
+        # negative_samples = torch.stack([self.xpos_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
+        # positive_samples = torch.stack([self.xpos_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
+        return c_cond_similar,c_cond_differ
 
     def get_sample_oracle_ypos_pairs(self , c_cond):
-        # ypos_factor = c_cond[:, 4]
-        # c_cond_new = torch.rand(self.config['batch_size'], self.config['latent_dim'] -1, dtype=torch.float32,
-        #                     device=self.device) * 2 - 1
-        # c_cond_similar = torch.cat((c_cond_new[:,:4], ypos_factor.view(-1,1)),dim=-1)
+        ypos_factor = c_cond[:, 4]
+        c_cond_similar = torch.cat((self.c_cond_new[:,:4], ypos_factor.view(-1,1)),dim=-1)
         latent = np.digitize(c_cond[:,4].cpu(),self.ypos_bins)
         latent =  [x - 1 for x in latent.tolist()]
         replace_list = []
         for current_value in latent:
             replace_value = random.choice(list(range(int(current_value))) + list(range(int(current_value) + 1, 32)))
             replace_list.append(replace_value)
-        # differ_ypos = torch.FloatTensor([random.uniform(bins[x], bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
-        # c_cond_differ = torch.cat((c_cond[:,:4] ,differ_ypos), dim=-1)
-        negative_samples = torch.stack([self.ypos_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
-        positive_samples = torch.stack([self.ypos_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
-        return positive_samples ,negative_samples
+        differ_ypos = torch.FloatTensor([random.uniform(self.ypos_bins[x], self.ypos_bins[x + 1]) for x in replace_list]).view(-1, 1).to(self.device)
+        c_cond_differ = torch.cat((c_cond[:,:4] ,differ_ypos), dim=-1)
+        # negative_samples = torch.stack([self.ypos_template[int(i)] for i in replace_list]).view(-1, 1, 64, 64)
+        # positive_samples = torch.stack([self.ypos_template[int(i)] for i in latent]).view(-1, 1, 64, 64)
+        return c_cond_similar,c_cond_differ
 
 
 
