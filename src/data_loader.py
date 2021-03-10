@@ -15,6 +15,10 @@ def get_data_loader(config):
 		from data.shapes_3d import shapes3d
 		data = shapes3d(config)
 		return data
+	elif config['dataset'] == 'teapots':
+		from data.teapots import Teapots
+		data = Teapots(config)
+		return data
 	elif config['dataset'] == 'noisy_dsprites':
 		raise NotImplementedError
 	elif config['dataset'] == 'celebA':

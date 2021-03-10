@@ -23,7 +23,7 @@ parser.add_argument('--model_arch', type=str, default='gan', choices=['vae', 'ga
 parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_vae', 'factor_vae', 'infogan',
                                                                           'betavae_cnn'], help='architecture of '
                                                                                                'model')
-parser.add_argument('--dataset', type=str, default='shapes_3d', choices=['cdsprites','celeba', 'scream_dsprites', 'coloredsprites','3dteapots'
+parser.add_argument('--dataset', type=str, default='teapots', choices=['cdsprites','celeba', 'scream_dsprites', 'coloredsprites','teapots'
                                                                         'shapes_3d'], help='name of the dataset')
 parser.add_argument('--epochs', type=int, default=26, help='The number of epochs to run')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
@@ -46,7 +46,7 @@ parser.add_argument('--learning_r_G', type=float, default=0.001, help='learning 
 parser.add_argument('--learning_r_D', type=float, default=0.002, help='learning rate of discriminator')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 optimizer')
 parser.add_argument('--beta2', type=float, default=0.999, help='beta2 optimizer')
-parser.add_argument('--lambda', type=float, default=0.1, help='regularization strength of MI term')
+parser.add_argument('--lambda', type=float, default=0.2, help='regularization strength of MI term')
 parser.add_argument('--alpha', type=float, default=2, help='regularization strength of contrastive regulazier')
 parser.add_argument('--learning_r_CR', type=float, default=0.002, help='learning rate for cr optimizer')
 parser.add_argument('--cr_gap', type=float, default=0, help='learning rate for cr optimizer')
