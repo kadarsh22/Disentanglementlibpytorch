@@ -2,7 +2,6 @@ import time
 import os
 import random
 from utils import *
-from data.custom_dataset import NewDataset
 
 log = logging.getLogger(__name__)
 
@@ -109,12 +108,7 @@ class Trainer(object):
         os.environ['PYTHONHASHSEED'] = str(seed)
 
     def _get_training_data(self):
-        # shapes_dataset = NewDataset()
-        import h5py
-        path = "/home/adarsh/PycharmProjects/Disentaglement/data/3dshapes.h5"
-        self.dataset = h5py.File(path, 'w')
-        self.images = self.dataset['images']
-        self.labels = self.dataset['labels']
-        self.dataset = torch.utils.data.TensorDataset(self.images,self.labels)
-        train_loader = torch.utils.data.DataLoader(self.dataset, batch_size=self.config['batch_size'], shuffle=True)
+        from data.custom_dataset import NewDataset
+        shapes3d = NewDataset()
+        train_loader = torch.utils.data.DataLoader(shapes3d, batch_size=self.config['batch_size'], shuffle=True, num_workers=4)
         return train_loader
