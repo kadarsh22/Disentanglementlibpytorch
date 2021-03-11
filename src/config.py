@@ -23,17 +23,17 @@ parser.add_argument('--model_arch', type=str, default='gan', choices=['vae', 'ga
 parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_vae', 'factor_vae', 'infogan',
                                                                           'betavae_cnn'], help='architecture of '
                                                                                                'model')
-parser.add_argument('--dataset', type=str, default='teapots', choices=['cdsprites','celeba', 'scream_dsprites', 'coloredsprites','teapots'
-                                                                        'shapes_3d'], help='name of the dataset')
+parser.add_argument('--dataset', type=str, default='shapes_3d', choices=['celeba', 'noisydsprites', 'coloredsprites',
+                                                                        'cars3d','shapes_3d'], help='name of the dataset')
 parser.add_argument('--epochs', type=int, default=26, help='The number of epochs to run')
 parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='whether to run in ablation study mode or not')
 parser.add_argument('--evaluation', type=bool, default=False, help='whether to run in evaluation mode or not')
-parser.add_argument('--file_name', type=str, default='25_gan.pkl', help='name of the model to be loaded')
+parser.add_argument('--file_name', type=str, default='30_gan.pkl', help='name of the model to be loaded')
 parser.add_argument('--device_id', type=int, default=0, help='Device id of gpu')
-parser.add_argument('--random_seed', type=int, default=239, help='Random seeds to run for ')
+parser.add_argument('--random_seed', type=int, default=567, help='Random seeds to run for ')
 
 # VAE configurations
 parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
@@ -44,12 +44,10 @@ parser.add_argument('--learning_r', type=float, default=5e-4, help='Number of la
 parser.add_argument('--noise_dim', type=int, default=5, help='Number of noise_dim')
 parser.add_argument('--learning_r_G', type=float, default=0.001, help='learning rate of generator')
 parser.add_argument('--learning_r_D', type=float, default=0.002, help='learning rate of discriminator')
+parser.add_argument('--learning_r_CR', type=float, default=0.002, help='learning rate for cr optimizer')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 optimizer')
 parser.add_argument('--beta2', type=float, default=0.999, help='beta2 optimizer')
-parser.add_argument('--lambda', type=float, default=0.2, help='regularization strength of MI term')
-parser.add_argument('--alpha', type=float, default=2, help='regularization strength of contrastive regulazier')
-parser.add_argument('--learning_r_CR', type=float, default=0.002, help='learning rate for cr optimizer')
-parser.add_argument('--cr_gap', type=float, default=0, help='learning rate for cr optimizer')
+parser.add_argument('--lambda', type=float, default=0.1, help='regularization strength of MI term')
 parser.add_argument('--interval_start', type=float, default=1, help='latent_traversal visualisation range')
 
 

@@ -19,9 +19,38 @@ class shapes3d(object):
 		dataset = h5py.File(path, 'r')
 		self.images = dataset['images']
 		self.labels = dataset['labels']
+		torch.save(torch.FloatTensor(self.images[()]),'shapes3d_data')
+		torch.save(torch.FloatTensor(self.images[()]), 'shapes3d_labels')
+		print('converted_succesfully')
 		self.image_shape = self.images.shape[1:]  # [64,64,3]
 		self.label_shape = self.labels.shape[1:]  # [6]
 		self.n_samples = self.labels.shape[0]
+
+
+	def sample_latent(self, size=1):
+		"""
+		Generate a vector with size of ground truth factors and random fill each column with values from range
+		:param size:
+		:return: latents
+		"""
+
+		factors= np.zeros([len(_FACTORS_IN_ORDER), size], dtype=np.int32)
+		for factor, name in enumerate(_FACTORS_IN_ORDER):
+			num_choices = _NUM_VALUES_PER_FACTOR[name]
+			factors[factor] = np.random.choice(num_choices, size)
+		return factors
+
+	def sample_images_from_latent(self, latent):
+		indices = self.get_index(latent)
+		ims = []
+		for ind in indices:
+			im = self.images[ind]
+			im = np.asarray(im)
+			ims.append(im)
+		ims = np.stack(ims, axis=0)
+		ims = ims / 255.  # normalise values to range [0,1]
+		ims = ims.astype(np.float32)
+		return ims.reshape([latent.size(0), 64, 64, 3])
 
 	def get_index(self,factors):
 		""" Converts factors to indices in range(num_data)
@@ -39,6 +68,7 @@ class shapes3d(object):
 			indices += factors[factor] * base
 			base *= _NUM_VALUES_PER_FACTOR[name]
 		return indices
+
 
 	def sample_random_batch(self,batch_size):
 		""" Samples a random batch of images.
