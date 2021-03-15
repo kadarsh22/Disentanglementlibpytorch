@@ -11,6 +11,10 @@ def get_data_loader(config):
 		from data.dsprites import ScreamDSprites
 		data = ScreamDSprites(config)
 		return data
+	elif config['dataset'] == 'cars3d':
+		from data.cars3d import Cars3D
+		data = Cars3D(config)
+		return data
 	elif config['dataset'] == 'shapes_3d':
 		from data.shapes_3d import shapes3d
 		data = shapes3d(config)

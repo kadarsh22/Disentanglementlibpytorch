@@ -58,15 +58,23 @@ class BetaVAEMetric(object):
                                      high=self.config['latent_dim'])  # 2-size ,3-orientation, 4-X-position 5 - Yposition
 
         # Sample two mini batches of latent variables.
-        factors1 = self.data.sample_latent(batch_size)
-        factors2 = self.data.sample_latent(batch_size)
+        if self.config['dataset'] == 'cars3d':
+            factors1 = self.data.sample_factors(batch_size,random_state=random_state)
+            factors2 = self.data.sample_factors(batch_size,random_state=random_state)
+        else:
+            factors1 = self.data.sample_latent(batch_size)
+            factors2 = self.data.sample_latent(batch_size)
 
         # Ensure sampled coordinate is the same across pairs of samples.
         factors1[:, index] = factors2[:, index]
 
         # Transform latent variables to observation space.
-        observation1 = self.data.sample_images_from_latent(factors1)
-        observation2 = self.data.sample_images_from_latent(factors2)
+        if self.config['dataset'] == 'cars3d':
+            observation1 = self.data.sample_observations_from_factors(factors1,random_state=random_state)
+            observation2 = self.data.sample_observations_from_factors(factors2, random_state=random_state)
+        else:
+            observation1 = self.data.sample_images_from_latent(factors1)
+            observation2 = self.data.sample_images_from_latent(factors2)
 
         #   Compute representations based on the observations.
         representation1, _ = model.encoder(torch.from_numpy(observation1).cuda(self.device_id))

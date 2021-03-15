@@ -6,7 +6,8 @@ from training_wrapper import run_training_wrapper
 from ablation_wrapper import run_ablation_wrapper
 from evaluation_wrapper import run_evaluation_wrapper
 from logger import PerfomanceLogger
-
+# import torch.multiprocessing as mp
+# mp.set_start_method('spawn')
 
 def main(configuration):
 	if configuration['dataset'] == 'dsprites' or 'scream_dsprites':

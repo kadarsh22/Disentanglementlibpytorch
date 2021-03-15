@@ -17,10 +17,10 @@ class MIG(object):
         self.device_id = device_id
         self.config = config
 
-    def compute_mig(self, model, num_train=10000, batch_size=64):
+    def compute_mig(self, model, num_train=10000, batch_size=64,random_state=None):
 
         score_dict = {}
-        representations, ground_truth = self.generate_batch_factor_code(model, num_train, batch_size)
+        representations, ground_truth = self.generate_batch_factor_code(model, num_train, batch_size, random_state)
 
         normalized_representation = self.normalize_data(representations)
         normalized_ground_truth = self.normalize_data(ground_truth)
@@ -77,17 +77,22 @@ class MIG(object):
 
         return m
 
-    def generate_batch_factor_code(self, model, num_points, batch_size):
+    def generate_batch_factor_code(self, model, num_points, batch_size, random_state):
 
         representations = None
         factors = None
         i = 0
         while i < num_points:
             num_points_iter = min(num_points - i, batch_size)
-            current_factors = self.data.sample_latent(num_points_iter)
-            current_observations = torch.from_numpy(self.data.sample_images_from_latent(current_factors))
-            current_factors = self.data.sample_latent_values(current_factors)
-            current_representations, _ = model.encoder(current_observations)
+            if self.config['dataset'] == 'cars3d':
+                current_factors = self.data.sample_factors(num_points_iter, random_state=random_state)
+                current_observations= self.data.sample_observations_from_factors(current_factors, random_state=random_state)
+            else:
+                current_factors = self.data.sample_latent(num_points_iter)
+                current_observations = torch.from_numpy(self.data.sample_images_from_latent(current_factors))
+                current_factors = self.data.sample_latent_values(current_factors)
+
+            current_representations, _ = model.encoder(torch.FloatTensor(current_observations))
             current_representations = current_representations.data.cpu()
             if i == 0:
                 factors = current_factors

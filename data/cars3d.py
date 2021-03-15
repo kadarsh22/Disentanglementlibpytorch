@@ -41,7 +41,10 @@ class Cars3D(ground_truth_data.GroundTruthData):
     2 - object type (183 different values)
     """
 
-	def __init__(self):
+	def __init__(self, config):
+		self.config = config
+		self.exp_name = config['experiment_name']
+		self.random_state  = np.random.RandomState(self.config['random_seed'])
 		self.factor_sizes = [4, 24, 183]
 		features = cartesian([np.array(list(range(i))) for i in self.factor_sizes])
 		self.latent_factor_indices = [0, 1, 2]

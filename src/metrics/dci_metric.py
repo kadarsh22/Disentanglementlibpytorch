@@ -13,6 +13,7 @@ class DCIMetric(object):
         super(DCIMetric, self).__init__()
         self.data = dsprites
         self.device_id = device_id
+        self.seed = 123
 
     def compute_dci(self, model):
         importance_matrix, train_errs, test_errs = self.get_importance_matrix(model)
@@ -66,7 +67,7 @@ class DCIMetric(object):
         i = 0
         while i < num_points:
             num_points_iter = min(num_points - i, batch_size)
-            current_factors, current_observations = self.data.sample(num_points_iter)
+            current_factors, current_observations = self.data.sample(num_points_iter,np.random.RandomState(self.seed))
             current_representations, _ = model.encoder(torch.from_numpy(current_observations))
             current_representations = current_representations.data.cpu()
             if i == 0:

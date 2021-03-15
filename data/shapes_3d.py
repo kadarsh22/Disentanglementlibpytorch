@@ -16,7 +16,7 @@ class shapes3d(object):
 		self.config = config
 		self.exp_name = config['experiment_name']
 		self.data_shape = [64, 64, 3]  # Load the data so that we can sample from it.
-		dataset = h5py.File(path, 'r')
+		dataset = h5py.File(path, 'r', libver='latest', swmr=True)
 		self.images = dataset['images']
 		self.labels = dataset['labels']
 		self.image_shape = self.images.shape[1:]  # [64,64,3]

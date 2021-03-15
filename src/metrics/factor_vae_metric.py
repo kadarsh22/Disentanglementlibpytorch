@@ -17,7 +17,7 @@ class FactorVAEMetric(object):
 	def compute_factor_vae(self, model, random_state, batch_size=64, num_train=10000, num_eval=5000,
 						   num_variance_estimate=10000):
 
-		global_variances = self._compute_variances(model, num_variance_estimate)
+		global_variances = self._compute_variances(model, num_variance_estimate, random_state)
 		active_dims = self._prune_dims(global_variances)
 		if not active_dims.any():
 			scores_dict = {"train_accuracy": 0., "eval_accuracy": 0., "num_active_dims": 0}
@@ -41,10 +41,13 @@ class FactorVAEMetric(object):
 		scale_z = np.sqrt(variances)
 		return scale_z >= threshold
 
-	def _compute_variances(self, model, num_variance_estimate):
-
-		latents = self.data.sample_latent(size=num_variance_estimate)
-		observations = self.data.sample_images_from_latent(latents)
+	def _compute_variances(self, model, num_variance_estimate, random_state):
+		if self.config['dataset'] == 'cars3d':
+			latents = self.data.sample_factors(num_variance_estimate,random_state=random_state)
+			observations = self.data.sample_observations_from_factors(latents,random_state=random_state)
+		else:
+			latents = self.data.sample_latent(size=num_variance_estimate)
+			observations = self.data.sample_images_from_latent(latents)
 		train_loader = torch.utils.data.DataLoader(observations, batch_size=self.config['batch_size'], shuffle=True,drop_last = True)
 		representations_list = []
 		for images in train_loader:

@@ -7,9 +7,9 @@ log = logging.getLogger(__name__)
 
 class Trainer(object):
 
-    def __init__(self, dsprites, config):
+    def __init__(self, data, config):
         super(Trainer, self).__init__()
-        self.data = dsprites
+        self.data = data
         self.config = config
         self.device = torch.device('cuda:' + str(config['device_id']))
         self.train_loader = self._get_training_data()
@@ -108,7 +108,6 @@ class Trainer(object):
         os.environ['PYTHONHASHSEED'] = str(seed)
 
     def _get_training_data(self):
-        from data.custom_dataset import NewDataset
-        shapes3d = NewDataset()
-        train_loader = torch.utils.data.DataLoader(shapes3d, batch_size=self.config['batch_size'], shuffle=True, num_workers=4)
+        images = self.data.images
+        train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True,drop_last=True)
         return train_loader
