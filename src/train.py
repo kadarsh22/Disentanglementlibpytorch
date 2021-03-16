@@ -81,7 +81,7 @@ class Trainer(object):
             negative_pairs = torch.cat((negative_shape_samples, negative_size_samples,negative_orient_samples,negative_xpos_samples,negative_ypos_samples),dim=0).to(self.device)
 
             fake_x = model.decoder(z)
-            total_images = torch.cat((fake_x,postive_pairs,negative_pairs),dim=0)
+            total_images = torch.cat((fake_x,postive_pairs.type(torch.cuda.FloatTensor),negative_pairs.type(torch.cuda.FloatTensor)),dim=0)
             latent_code, prob_fake , latent_similar = model.encoder(total_images)
 
             g_loss = adversarial_loss(prob_fake[:64], label_real)

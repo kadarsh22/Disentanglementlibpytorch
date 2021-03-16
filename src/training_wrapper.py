@@ -18,6 +18,7 @@ def run_training_wrapper(configuration, data, perf_logger):
 	model_trainer = Trainer(data, configuration)
 	evaluator = Evaluator(data, configuration)
 	saver = Saver(configuration)
+	#model, optimizer, loss = saver.load_model(model=model, optimizer=optimizer)
 	visualise_results = Visualiser(configuration)
 	perf_logger.stop_monitoring("Fetching data, models and class instantiations")
 	print_network(model.encoder)
