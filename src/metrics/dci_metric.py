@@ -67,7 +67,8 @@ class DCIMetric(object):
         while i < num_points:
             num_points_iter = min(num_points - i, batch_size)
             current_factors, current_observations = self.data.sample(num_points_iter)
-            current_representations, _ ,_ = model.encoder(torch.from_numpy(current_observations))
+            current_observations = self.data.add_noise(torch.FloatTensor(current_observations),np.random.RandomState(42))
+            current_representations, _ ,_ = model.encoder(current_observations)
             current_representations = current_representations.data.cpu()
             if i == 0:
                 factors = current_factors

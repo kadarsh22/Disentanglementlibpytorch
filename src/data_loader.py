@@ -6,7 +6,9 @@ def get_data_loader(config):
 	elif config['dataset'] == 'colored_dsprites':
 		raise NotImplementedError
 	elif config['dataset'] == 'noisy_dsprites':
-		raise NotImplementedError
+		from data.dsprites import NoisyDSprites
+		data = NoisyDSprites(config)
+		return data
 	elif config['dataset'] == 'colored_dsprites':
 		raise NotImplementedError
 	elif config['dataset'] == 'celebA':

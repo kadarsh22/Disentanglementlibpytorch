@@ -22,7 +22,7 @@ class Generator(nn.Module):
         self.bn4 = nn.BatchNorm2d(32)
         self.upconv5 = nn.ConvTranspose2d(in_channels=32, out_channels=32, kernel_size=4, stride=2, padding=1)
         self.bn5 = nn.BatchNorm2d(32)
-        self.upconv6 = nn.ConvTranspose2d(in_channels=32, out_channels=1, kernel_size=4, stride=2, padding=1)
+        self.upconv6 = nn.ConvTranspose2d(in_channels=32, out_channels=3, kernel_size=4, stride=2, padding=1)
 
     def forward(self, z):
         # Layer 1: [-1, dim_latent] -> [-1, 128]
@@ -56,7 +56,7 @@ class Discriminator(nn.Module):
         self.dim_c_cont = dim_c_cont
         # Shared layers
         self.module_shared = nn.Sequential(
-            spectral_norm(nn.Conv2d(in_channels=1,
+            spectral_norm(nn.Conv2d(in_channels=3,
                                     out_channels=32,
                                     kernel_size=4,
                                     stride=2,
@@ -110,7 +110,7 @@ class Discriminator(nn.Module):
 
     def forward(self, z):
         z = z.type(torch.cuda.FloatTensor)
-        out = self.module_shared(z.view(-1,1,64,64))
+        out = self.module_shared(z.view(-1,3,64,64))
         probability = self.module_D(out)
         probability = probability.squeeze()
         internal_Q = self.module_Q(out)

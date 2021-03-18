@@ -45,6 +45,7 @@ class FactorVAEMetric(object):
 
 		latents = self.data.sample_latent(size=num_variance_estimate)
 		observations = self.data.sample_images_from_latent(latents)
+		observations = self.data.add_noise(torch.FloatTensor(observations),np.random.RandomState(42))
 		train_loader = torch.utils.data.DataLoader(observations, batch_size=self.config['batch_size'], shuffle=True,drop_last = True)
 		representations_list = []
 		for images in train_loader:

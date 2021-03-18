@@ -65,12 +65,12 @@ class BetaVAEMetric(object):
         factors1[:, index] = factors2[:, index]
 
         # Transform latent variables to observation space.
-        observation1 = self.data.sample_images_from_latent(factors1)
-        observation2 = self.data.sample_images_from_latent(factors2)
+        observation1 = self.data.add_noise(torch.FloatTensor(self.data.sample_images_from_latent(factors1)),np.random.RandomState(42))
+        observation2 = self.data.add_noise(torch.FloatTensor(self.data.sample_images_from_latent(factors2)),np.random.RandomState(42))
 
         #   Compute representations based on the observations.
-        representation1, _ ,_= model.encoder(torch.from_numpy(observation1).cuda(self.device_id))
-        representation2, _  ,_= model.encoder(torch.from_numpy(observation2).cuda(self.device_id))
+        representation1, _ ,_= model.encoder((observation1).cuda(self.device_id))
+        representation2, _  ,_= model.encoder((observation2).cuda(self.device_id))
         representation1 = representation1.data.cpu().numpy()
         representation2 = representation2.data.cpu().numpy()
 

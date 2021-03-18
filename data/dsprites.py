@@ -78,6 +78,34 @@ class DSprites(object):
         indices = np.array(np.dot(all_factors, self.factor_bases), dtype=np.int64)
         return np.expand_dims(self.images[indices].astype(np.float32), axis=3)
 
+
+class NoisyDSprites(DSprites):
+      """Noisy DSprites.
+      This data set is the same as the original DSprites data set except that when
+      sampling the observations X, the background pixels are replaced with random
+      noise.
+      The ground-truth factors of variation are (in the default setting):
+      0 - shape (3 different values)
+      1 - scale (6 different values)
+      2 - orientation (40 different values)
+      3 - position x (32 different values)
+      4 - position y (32 different values)
+      """
+
+      def __init__(self, config,latent_factor_indices=None):
+        DSprites.__init__(self,config)
+        self.config = config
+        self.exp_name = config['experiment_name']
+        self.data_shape = [64, 64, 3]
+
+      def add_noise(self, no_color_observations,random_state):
+        # no_color_observations = self.sample_observations_from_factors_no_color(
+        #     factors, random_state)
+        observations = np.repeat(no_color_observations.view(-1,1,64,64).cpu(), 3, axis=1)
+        color = random_state.uniform(0, 1, [observations.shape[0], 3,64, 64])
+        return np.minimum(observations + color, 1.)
+
+
 class ScreamDSprites(DSprites):
   """Scream DSprites.
   This data set is the same as the original DSprites data set except that when

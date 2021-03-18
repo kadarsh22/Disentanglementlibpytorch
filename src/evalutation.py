@@ -32,14 +32,18 @@ class Evaluator(object):
         factor_vae = FactorVAEMetric(self.data, self.device, self.config)
         DCI_metric = DCIMetric(self.data, self.device)
         dci = DCI_metric.compute_dci(model)
+        print('dci computed')
         mig = MIG(self.data, self.device,self.config)
         beta_vae_metric = beta_vae.compute_beta_vae(model, np.random.RandomState(self.config['random_seed']),
                                                     batch_size=64,
-                                                    num_train=10000, num_eval=5000)
+                                                    num_train=5000, num_eval=1000)
+        print('beta vae_computed')
         factor_vae_metric = factor_vae.compute_factor_vae(model, np.random.RandomState(self.config['random_seed']),
-                                                          batch_size=64, num_train=10000, num_eval=5000,
-                                                          num_variance_estimate=10000)
-        mutual_info_gap = mig.compute_mig(model, num_train=10000, batch_size=128)
+                                                          batch_size=64, num_train=5000, num_eval=1000,
+                                                          num_variance_estimate=5000)
+        print('factor_vae_computed')
+        mutual_info_gap = mig.compute_mig(model, num_train=5000, batch_size=128)
+        print('mig computed')
         dci_average = (dci['disentanglement'] + dci['completeness'] + dci['informativeness']) / 3
         metrics = {'beta_vae': beta_vae_metric, 'factor_vae': factor_vae_metric, 'mig': mutual_info_gap,
                    'dci_metric': dci_average}
