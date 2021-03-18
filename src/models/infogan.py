@@ -99,13 +99,13 @@ class Discriminator(nn.Module):
         self.latent_cont = spectral_norm(nn.Linear(
             in_features=128, out_features=self.dim_c_cont))
 
-        self.module_S = nn.Sequential(
-            spectral_norm(nn.Linear(in_features=128, out_features=128)),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True)
-        )
-
-        self.latent_similar = spectral_norm(nn.Linear(
-            in_features=128, out_features=self.dim_c_cont))
+        # self.module_S = nn.Sequential(
+        #     spectral_norm(nn.Linear(in_features=128, out_features=128)),
+        #     nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        # )
+        #
+        # self.latent_similar = spectral_norm(nn.Linear(
+        #     in_features=128, out_features=self.dim_c_cont))
 
 
     def forward(self, z):
@@ -115,9 +115,9 @@ class Discriminator(nn.Module):
         probability = probability.squeeze()
         internal_Q = self.module_Q(out)
         c_cont = self.latent_cont(internal_Q)
-        internal_S = self.module_S(out)
-        similarity = self.latent_similar(internal_S)
-        return c_cont,probability,similarity
+        # internal_S = self.module_S(out)
+        # similarity = self.latent_similar(internal_S)
+        return c_cont,probability,None
 
 
 class Reshape(nn.Module):
