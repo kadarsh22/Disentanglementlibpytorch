@@ -66,7 +66,7 @@ class Trainer(object):
             g_loss = adversarial_loss(prob_fake, label_real)
             cont_loss = criterionQ_con(c_cond, latent_code)
 
-            G_loss = g_loss + cont_loss * 0.1
+            G_loss = g_loss + cont_loss * self.config['lambda']
             G_loss.backward()
 
             g_optimizer.step()
@@ -108,6 +108,6 @@ class Trainer(object):
         os.environ['PYTHONHASHSEED'] = str(seed)
 
     def _get_training_data(self):
-        images = self.data.images
-        train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True)
+        images = self.data.train_images
+        train_loader = torch.utils.data.DataLoader(images, batch_size=self.config['batch_size'], shuffle=True,drop_last= True)
         return train_loader

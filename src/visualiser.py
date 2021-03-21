@@ -1,9 +1,11 @@
 import os
 import torch
 import torchvision
+import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
-matplotlib.use("Agg")
+matplotlib.use('TkAgg')
+from matplotlib import pyplot as plt
+plt.ioff()
 import itertools
 
 
@@ -12,6 +14,23 @@ class Visualiser(object):
 	def __init__(self, config):
 		self.config = config
 		self.experiment_name = config['experiment_name']
+
+	def show_images_grid(self, save_path, samples, num_images=25):
+		# ncols = int(np.ceil(num_images ** 0.5))
+		# nrows = int(np.ceil(num_images / ncols))
+		ncols = 5
+		nrows = 10
+		_, axes = plt.subplots(ncols, nrows, figsize=(nrows * 3, ncols * 3))
+		axes = axes.flatten()
+
+		for ax_i, ax in enumerate(axes):
+			if ax_i < num_images:
+				ax.imshow(samples[ax_i].permute(1,2,0).cpu().detach().numpy())
+				ax.set_xticks([])
+				ax.set_yticks([])
+			else:
+				ax.axis('off')
+		plt.savefig(save_path)
 
 	def generate_plot_save_results(self, results, plot_type):
 		file_location = os.path.dirname(os.getcwd())+ f'/results/{self.experiment_name}' + '/visualisations/plots/'
@@ -48,9 +67,7 @@ class Visualiser(object):
 				sample = sample.view(-1, 64, 64)
 				samples.append(sample)
 			rep_org.data[:, j] = temp
-		grid_img = torchvision.utils.make_grid(samples, nrow=10, padding=10, pad_value=1)
-		grid = grid_img.permute(1, 2, 0).type(torch.FloatTensor)
-		plt.imsave(path, grid.data.numpy())
+		self.show_images_grid(path, samples, num_images=len(samples))
 
 	def visualise_ablation_results(self, y_axis, x_axis, plot_name, legend_list):
 		file_location = os.path.dirname(os.getcwd()) + f'/results/{self.experiment_name}/'
@@ -78,5 +95,3 @@ class Visualiser(object):
 		ax.set_zlabel(z_label)
 		# fig.colorbar(img)
 		plt.show()
-
-
