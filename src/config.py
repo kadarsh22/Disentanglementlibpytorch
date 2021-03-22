@@ -3,19 +3,19 @@ import json
 import os
 import sys
 
-experiment_name = input("Enter experiment name ")
-if experiment_name == '':
-    print('enter valid experiment name')
-    sys.exit()
+#experiment_name = input("Enter experiment name ")
+#if experiment_name == '':
+#    print('enter valid experiment name')
+#    sys.exit()
 
-experiment_description = input("Enter description of experiment ")
-if experiment_description == '':
-    print('enter proper description')
-    sys.exit()
+#experiment_description = input("Enter description of experiment ")
+#if experiment_description == '':
+#    print('enter proper description')
+#    sys.exit()
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_name', type=str, default=experiment_name)
-parser.add_argument('--experiment_description', type=str, default=experiment_description)
+parser.add_argument('--experiment_name', type=str, default='teapots_infogan')
+parser.add_argument('--experiment_description', type=str, default='teapots infogan')
 
 # general configuration
 parser.add_argument('--model_arch', type=str, default='gan', choices=['vae', 'gan', 'deepinfomax'],
@@ -25,8 +25,8 @@ parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_
                                                                                                'model')
 parser.add_argument('--dataset', type=str, default='teapots', choices=['celeba', 'noisydsprites', 'coloredsprites',
                                                                         'cars3d','teapots'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=16, help='The number of epochs to run')
-parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
+parser.add_argument('--epochs', type=int, default=40, help='The number of epochs to run')
+parser.add_argument('--logging_freq', type=int, default=3, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='whether to run in ablation study mode or not')
