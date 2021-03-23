@@ -54,7 +54,7 @@ class MIG(object):
     def evaluate(self, model):
         data_inference, _ = model.encoder(torch.FloatTensor((self.metric_data["img_with_latent"]["img"])))
         data_inference = data_inference.detach().cpu().numpy()
-        data_gt_latents,_ = self.metric_data["img_with_latent"]["latent_id"]
+        data_gt_latents = self.metric_data["img_with_latent"]["latent_id"]
         data_inference_discrete = self.discretize(data_inference)
         mi = self.mutual_info(
             data_inference_discrete, data_gt_latents)
