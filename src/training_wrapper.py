@@ -22,6 +22,7 @@ def run_training_wrapper(configuration, data, perf_logger):
 	perf_logger.stop_monitoring("Fetching data, models and class instantiations")
 	print_network(model.encoder)
 	print_network(model.decoder)
+#	model, optimizer, loss = saver.load_model(model=model, optimizer=optimizer)
 
 	for i in range(configuration['epochs']):
 		if configuration['model_arch'] == 'vae':

@@ -14,7 +14,7 @@ import sys
 #    sys.exit()
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_name', type=str, default='teapots_infogan')
+parser.add_argument('--experiment_name', type=str, default='teapots_infogan_extended')
 parser.add_argument('--experiment_description', type=str, default='teapots infogan')
 
 # general configuration
@@ -25,13 +25,13 @@ parser.add_argument('--model_name', type=str, default='infogan', choices=['beta_
                                                                                                'model')
 parser.add_argument('--dataset', type=str, default='teapots', choices=['celeba', 'noisydsprites', 'coloredsprites',
                                                                         'cars3d','teapots'], help='name of the dataset')
-parser.add_argument('--epochs', type=int, default=40, help='The number of epochs to run')
-parser.add_argument('--logging_freq', type=int, default=3, help='Frequency at which result  should be logged')
+parser.add_argument('--epochs', type=int, default=16, help='The number of epochs to run')
+parser.add_argument('--logging_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--saving_freq', type=int, default=5, help='Frequency at which result  should be logged')
 parser.add_argument('--full_data', type=bool, default=True, help='whether to use full data or not')
 parser.add_argument('--ablation', type=bool, default=False, help='whether to run in ablation study mode or not')
 parser.add_argument('--evaluation', type=bool, default=False, help='whether to run in evaluation mode or not')
-parser.add_argument('--file_name', type=str, default='2_gan.pkl', help='name of the model to be loaded')
+parser.add_argument('--file_name', type=str, default='100_gan.pkl', help='name of the model to be loaded')
 parser.add_argument('--device_id', type=int, default=0, help='Device id of gpu')
 parser.add_argument('--random_seed', type=int, default=239, help='Random seeds to run for ')
 
